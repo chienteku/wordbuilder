@@ -123,34 +123,198 @@ const HomePage: React.FC = () => {
     }
   }, [initialLetter]);
 
-  return (
+  // Helper function to check if a letter is a vowel
+  const isVowel = (letter: string): boolean => {
+    return ['a', 'e', 'i', 'o', 'u'].includes(letter.toLowerCase());
+  };
 
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4"> <h1 className="text-3xl font-bold mb-6">Word Builder</h1>
+  // Function to sort and split letters into vowels and consonants
+  const sortAndSplitLetters = (letters: string[]) => {
+    const vowels = letters.filter(letter => isVowel(letter)).sort();
+    const consonants = letters.filter(letter => !isVowel(letter)).sort();
+    return { vowels, consonants };
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      <h1 className="text-3xl font-bold mb-6">Word Builder</h1>
+
       {/* 初始字母選擇 */}
       {!sessionId && (
+        <div className="mb-4">
+          <label htmlFor="initialLetter" className="mr-2">
+            Select Initial Letter:
+          </label>
+          <select
+            id="initialLetter"
+            value={initialLetter}
+            onChange={(e) => setInitialLetter(e.target.value)}
+            className="p-2 border rounded"
+          >
+            <option value="">Select a letter</option>
+            {Array.from('abcdefghijklmnopqrstuvwxyz').map((letter) => (
+              <option key={letter} value={letter}>
+                {letter}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
-        <div className="mb-4"> <label htmlFor="initialLetter" className="mr-2"> Select Initial Letter: </label> <select id="initialLetter" value={initialLetter} onChange={(e) => setInitialLetter(e.target.value)} className="p-2 border rounded" > <option value="">Select a letter</option> {Array.from('abcdefghijklmnopqrstuvwxyz').map((letter) => (<option key={letter} value={letter}> {letter} </option>))} </select> </div>)}
       {/* 主畫面 */}
       {state && (
+        <div className="flex w-full max-w-4xl">
+          {/* 前綴字母集合 */}
+          <div className="w-1/3 p-4 bg-white rounded-l-lg shadow">
+            <h2 className="text-lg font-semibold mb-2">Prefix Letters</h2>
 
-        <div className="flex w-full max-w-4xl"> {/* 前綴字母集合 */} <div className="w-1/3 p-4 bg-white rounded-l-lg shadow"> <h2 className="text-lg font-semibold mb-2">Prefix Letters</h2> <div className="flex flex-wrap gap-2"> {state.prefix_set.length > 0 ? (state.prefix_set.map((letter) => (<motion.button key={letter} onClick={() => addLetter(letter, 'prefix')} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.2 }} > {letter} </motion.button>))) : (<p className="text-gray-500">No prefix letters available.</p>)} </div> </div>
+            {state.prefix_set.length > 0 ? (
+              <div>
+                {/* Vowels */}
+                <h3 className="text-md font-medium mt-2 mb-1">Vowels</h3>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {sortAndSplitLetters(state.prefix_set).vowels.length > 0 ? (
+                    sortAndSplitLetters(state.prefix_set).vowels.map((letter) => (
+                      <motion.button
+                        key={`vowel-${letter}`}
+                        onClick={() => addLetter(letter, 'prefix')}
+                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {letter}
+                      </motion.button>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No vowels available.</p>
+                  )}
+                </div>
+
+                {/* Consonants */}
+                <h3 className="text-md font-medium mt-2 mb-1">Consonants</h3>
+                <div className="flex flex-wrap gap-2">
+                  {sortAndSplitLetters(state.prefix_set).consonants.length > 0 ? (
+                    sortAndSplitLetters(state.prefix_set).consonants.map((letter) => (
+                      <motion.button
+                        key={`consonant-${letter}`}
+                        onClick={() => addLetter(letter, 'prefix')}
+                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {letter}
+                      </motion.button>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No consonants available.</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500">No prefix letters available.</p>
+            )}
+          </div>
+
           {/* 答案和提示 */}
+          <div className="w-1/3 p-4 bg-white shadow flex flex-col items-center">
+            <h2 className="text-lg font-semibold mb-2">Current Word</h2>
+            <div className="flex gap-1 mb-4">
+              {state.answer.split('').map((letter, index) => (
+                <motion.span
+                  key={`${letter}-${index}`}
+                  onClick={() => removeLetter(index)}
+                  className="px-2 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {letter}
+                </motion.span>
+              ))}
+            </div>
+            {isValidWord && (
+              <motion.p
+                className="text-green-600 font-semibold"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                This is a valid English word!
+              </motion.p>
+            )}
+          </div>
 
-          <div className="w-1/3 p-4 bg-white shadow flex flex-col items-center"> <h2 className="text-lg font-semibold mb-2">Current Word</h2> <div className="flex gap-1 mb-4"> {state.answer.split('').map((letter, index) => (<motion.span key={`${letter}-${index}`} onClick={() => removeLetter(index)} className="px-2 py-1 bg-gray-200 rounded cursor-pointer hover:bg-gray-300" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.2 }} > {letter} </motion.span>))} </div> {isValidWord && (<motion.p className="text-green-600 font-semibold" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3 }} > This is a valid English word! </motion.p>)} </div>
           {/* 後綴字母集合 */}
+          <div className="w-1/3 p-4 bg-white rounded-r-lg shadow">
+            <h2 className="text-lg font-semibold mb-2">Suffix Letters</h2>
 
-          <div className="w-1/3 p-4 bg-white rounded-r-lg shadow"> <h2 className="text-lg font-semibold mb-2">Suffix Letters</h2> <div className="flex flex-wrap gap-2"> {state.suffix_set.length > 0 ? (state.suffix_set.map((letter) => (<motion.button key={letter} onClick={() => addLetter(letter, 'suffix')} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.2 }} > {letter} </motion.button>))) : (<p className="text-gray-500">No suffix letters available.</p>)} </div> </div> </div>)}
+            {state.suffix_set.length > 0 ? (
+              <div>
+                {/* Vowels */}
+                <h3 className="text-md font-medium mt-2 mb-1">Vowels</h3>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {sortAndSplitLetters(state.suffix_set).vowels.length > 0 ? (
+                    sortAndSplitLetters(state.suffix_set).vowels.map((letter) => (
+                      <motion.button
+                        key={`vowel-${letter}`}
+                        onClick={() => addLetter(letter, 'suffix')}
+                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {letter}
+                      </motion.button>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No vowels available.</p>
+                  )}
+                </div>
+
+                {/* Consonants */}
+                <h3 className="text-md font-medium mt-2 mb-1">Consonants</h3>
+                <div className="flex flex-wrap gap-2">
+                  {sortAndSplitLetters(state.suffix_set).consonants.length > 0 ? (
+                    sortAndSplitLetters(state.suffix_set).consonants.map((letter) => (
+                      <motion.button
+                        key={`consonant-${letter}`}
+                        onClick={() => addLetter(letter, 'suffix')}
+                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {letter}
+                      </motion.button>
+                    ))
+                  ) : (
+                    <p className="text-gray-500">No consonants available.</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-gray-500">No suffix letters available.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 錯誤訊息 */}
       {error && (
         <motion.p
           className="mt-4 text-red-600"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}>
+          transition={{ duration: 0.3 }}
+        >
           {error}
         </motion.p>
-      )
-      }
-    </div >);
+      )}
+    </div>
+  );
 };
+
 export default HomePage;
