@@ -10,6 +10,13 @@ interface WordBuilderState {
   step: number;
 }
 
+interface WordDetails {
+  pronunciation: string;
+  audio: string;
+  meaning: string;
+  example: string;
+}
+
 interface ApiResponse {
   session_id?: string;
   state: WordBuilderState;
@@ -19,8 +26,8 @@ interface ApiResponse {
 }
 
 // Update API URL to use the correct port (8081) and support relative URLs when deployed
-const API_BASE_URL = typeof window !== 'undefined' 
-  ? (window.location.hostname === 'localhost' 
+const API_BASE_URL = typeof window !== 'undefined'
+  ? (window.location.hostname === 'localhost'
     ? 'http://localhost:8081/api/wordbuilder'
     : '/api/wordbuilder')
   : '/api/wordbuilder';
@@ -30,6 +37,7 @@ const HomePage: React.FC = () => {
   const [state, setState] = useState<WordBuilderState | null>(null);
   const [isValidWord, setIsValidWord] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [wordDetails, setWordDetails] = useState<WordDetails | null>(null);
 
   // Initialize WordBuilder
   const initializeWordBuilder = async () => {
@@ -61,6 +69,10 @@ const HomePage: React.FC = () => {
         setState(response.data.state);
         setIsValidWord(response.data.message?.includes('valid English word') || false);
         setError(null);
+
+        if (isValidWord) {
+          fetchWordDetails(response.data.state.answer);
+        }
       } else {
         setError(response.data.message || 'Failed to add letter.');
       }
@@ -81,6 +93,13 @@ const HomePage: React.FC = () => {
         setState(response.data.state);
         setIsValidWord(response.data.message?.includes('valid English word') || false);
         setError(null);
+        // Call fetchWordDetails if it's a valid word
+        if (isValidWord) {
+          fetchWordDetails(response.data.state.answer);
+        } else {
+          // Clear word details if it's no longer a valid word
+          setWordDetails(null);
+        }
       } else {
         setError(response.data.message || 'Failed to remove letter.');
       }
@@ -127,19 +146,19 @@ const HomePage: React.FC = () => {
   };
 
   // Component to render letter buttons
-  const LetterButtons = ({ 
-    letters, 
-    position, 
-    type 
-  }: { 
-    letters: string[], 
+  const LetterButtons = ({
+    letters,
+    position,
+    type
+  }: {
+    letters: string[],
     position: 'prefix' | 'suffix',
     type: 'vowels' | 'consonants'
   }) => {
     if (letters.length === 0) {
       return <p className="text-gray-500">No {type} available.</p>;
     }
-    
+
     return (
       <div className="flex flex-wrap gap-2 mb-3">
         {letters.map((letter) => (
@@ -159,26 +178,26 @@ const HomePage: React.FC = () => {
   };
 
   // Component to render letter set (prefix or suffix)
-  const LetterSet = ({ 
-    title, 
-    letters, 
-    position 
-  }: { 
-    title: string, 
-    letters: string[], 
-    position: 'prefix' | 'suffix' 
+  const LetterSet = ({
+    title,
+    letters,
+    position
+  }: {
+    title: string,
+    letters: string[],
+    position: 'prefix' | 'suffix'
   }) => {
     const { vowels, consonants } = sortAndSplitLetters(letters);
-    
+
     return (
       <div className={`w-1/3 p-4 bg-white ${position === 'prefix' ? 'rounded-l-lg' : 'rounded-r-lg'} shadow`}>
         <h2 className="text-lg font-semibold mb-2">{title}</h2>
-        
+
         {letters.length > 0 ? (
           <div>
             <h3 className="text-md font-medium mt-2 mb-1">Vowels</h3>
             <LetterButtons letters={vowels} position={position} type="vowels" />
-            
+
             <h3 className="text-md font-medium mt-2 mb-1">Consonants</h3>
             <LetterButtons letters={consonants} position={position} type="consonants" />
           </div>
@@ -189,6 +208,22 @@ const HomePage: React.FC = () => {
     );
   };
 
+  // When a valid word is detected
+  const fetchWordDetails = async (word: string) => {
+    try {
+      const response = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+      const data = response.data[0];
+      setWordDetails({
+        pronunciation: data.phonetics[0]?.text || '',
+        audio: data.phonetics[0]?.audio || '',
+        meaning: data.meanings[0]?.definitions[0]?.definition || '',
+        example: data.meanings[0]?.definitions[0]?.example || ''
+      });
+    } catch (err) {
+      console.error('Failed to fetch word details:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <h1 className="text-3xl font-bold mb-6">Word Builder</h1>
@@ -196,10 +231,10 @@ const HomePage: React.FC = () => {
       {state && (
         <div className="flex w-full max-w-4xl">
           {/* Prefix Letters */}
-          <LetterSet 
-            title="Prefix Letters" 
-            letters={state.prefix_set} 
-            position="prefix" 
+          <LetterSet
+            title="Prefix Letters"
+            letters={state.prefix_set}
+            position="prefix"
           />
 
           {/* Current Word */}
@@ -220,23 +255,38 @@ const HomePage: React.FC = () => {
               ))}
             </div>
 
-            {isValidWord && (
-              <motion.p
-                className="text-green-600 font-semibold mt-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+            {isValidWord && wordDetails && (
+              <motion.div
+                className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
                 transition={{ duration: 0.3 }}
               >
-                This is a valid English word!
-              </motion.p>
+                <div className="flex items-center mb-2">
+                  <h3 className="font-semibold mr-2">{state.answer}</h3>
+                  <span className="text-gray-600">/{wordDetails.pronunciation}/</span>
+                  {wordDetails.audio && (
+                    <button
+                      onClick={() => new Audio(wordDetails.audio).play()}
+                      className="ml-2 text-blue-500"
+                    >
+                      🔊
+                    </button>
+                  )}
+                </div>
+                <p className="text-gray-800 mb-2">{wordDetails.meaning}</p>
+                {wordDetails.example && (
+                  <p className="text-gray-600 italic">"{wordDetails.example}"</p>
+                )}
+              </motion.div>
             )}
           </div>
 
           {/* Suffix Letters */}
-          <LetterSet 
-            title="Suffix Letters" 
-            letters={state.suffix_set} 
-            position="suffix" 
+          <LetterSet
+            title="Suffix Letters"
+            letters={state.suffix_set}
+            position="suffix"
           />
         </div>
       )}
