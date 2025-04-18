@@ -29,20 +29,13 @@ const API_BASE_URL = typeof window !== 'undefined'
 const HomePage: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [state, setState] = useState<WordBuilderState | null>(null);
-  const [initialLetter, setInitialLetter] = useState('');
   const [isValidWord, setIsValidWord] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 初始化或恢復 WordBuilder
-  const initializeWordBuilder = async (letter?: string) => {
-    if (!letter && !initialLetter) {
-      setError('Please select an initial letter.');
-      return;
-    }
+  // 初始化 WordBuilder
+  const initializeWordBuilder = async () => {
     try {
-      const response = await axios.post<ApiResponse>(`${API_BASE_URL}/init`, {
-        initial_letter: letter || initialLetter,
-      });
+      const response = await axios.post<ApiResponse>(`${API_BASE_URL}/init`, {});
       const newSessionId = response.data.session_id || null;
       setSessionId(newSessionId);
       setState(response.data.state);
@@ -98,10 +91,11 @@ const HomePage: React.FC = () => {
         localStorage.removeItem('sessionId');
         setSessionId(null);
         setState(null);
-        setInitialLetter('');
       }
     }
   };
+
+  // This function is no longer needed as we can click on any letter to remove it
 
   // 恢復狀態
   useEffect(() => {
@@ -113,21 +107,17 @@ const HomePage: React.FC = () => {
           setSessionId(savedSessionId);
           setState(response.data.state);
           setIsValidWord(response.data.message?.includes('valid English word') || false);
-          setInitialLetter(response.data.state.answer[0]);
         })
         .catch((err) => {
-          setError(`Failed to restore session. Please start a new session. ${err}`);
+          setError(`Failed to restore session. Starting a new session.`);
           localStorage.removeItem('sessionId');
+          initializeWordBuilder();
         });
-    }
-  }, [sessionId]);
-
-  // 當 initialLetter 改變時初始化
-  useEffect(() => {
-    if (initialLetter && !sessionId) {
+    } else if (!sessionId) {
+      // If no saved session, start a new one
       initializeWordBuilder();
     }
-  }, [initialLetter]);
+  }, [sessionId]);
 
   // Helper function to check if a letter is a vowel
   const isVowel = (letter: string): boolean => {
@@ -144,28 +134,6 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
       <h1 className="text-3xl font-bold mb-6">Word Builder</h1>
-
-      {/* 初始字母選擇 */}
-      {!sessionId && (
-        <div className="mb-4">
-          <label htmlFor="initialLetter" className="mr-2">
-            Select Initial Letter:
-          </label>
-          <select
-            id="initialLetter"
-            value={initialLetter}
-            onChange={(e) => setInitialLetter(e.target.value)}
-            className="p-2 border rounded"
-          >
-            <option value="">Select a letter</option>
-            {Array.from('abcdefghijklmnopqrstuvwxyz').map((letter) => (
-              <option key={letter} value={letter}>
-                {letter}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
 
       {/* 主畫面 */}
       {state && (
@@ -241,9 +209,10 @@ const HomePage: React.FC = () => {
                 </motion.span>
               ))}
             </div>
+
             {isValidWord && (
               <motion.p
-                className="text-green-600 font-semibold"
+                className="text-green-600 font-semibold mt-4"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3 }}

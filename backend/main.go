@@ -87,21 +87,27 @@ type WordBuilder struct {
 }
 
 // NewWordBuilder 創建新的 WordBuilder
-func NewWordBuilder(initialLetter string, trie *Trie) *WordBuilder {
+func NewWordBuilder(trie *Trie) *WordBuilder {
 	wb := &WordBuilder{
-		Answer:    initialLetter,
+		Answer:    "",
 		PrefixSet: make(map[string]bool),
 		SuffixSet: make(map[string]bool),
-		Step:      1,
+		Step:      0,
 		Trie:      trie,
 	}
-	wb.UpdateSets()
+
+	// 初始時提供所有26個字母
+	for _, letter := range "abcdefghijklmnopqrstuvwxyz" {
+		wb.PrefixSet[string(letter)] = true
+		wb.SuffixSet[string(letter)] = true
+	}
+
 	return wb
 }
 
 // IsValidWord 檢查當前答案是否為有效單字
 func (wb *WordBuilder) IsValidWord() bool {
-	return wb.Trie.Contains(wb.Answer)
+	return len(wb.Answer) > 0 && wb.Trie.Contains(wb.Answer)
 }
 
 // AddLetter 添加字母到答案
@@ -135,10 +141,8 @@ func (wb *WordBuilder) RemoveLetter(index int) (bool, string) {
 	if index < 0 || index >= len(wb.Answer) {
 		return false, fmt.Sprintf("Invalid index %d for answer '%s'.", index, wb.Answer)
 	}
-	if len(wb.Answer) <= 1 {
-		return false, "Cannot remove the last letter."
-	}
 
+	// Allow removing any letter, including the last one
 	letter := string(wb.Answer[index])
 	newAnswer := wb.Answer[:index] + wb.Answer[index+1:]
 	wb.Answer = newAnswer
@@ -157,6 +161,15 @@ func (wb *WordBuilder) RemoveLetter(index int) (bool, string) {
 func (wb *WordBuilder) UpdateSets() {
 	wb.PrefixSet = make(map[string]bool)
 	wb.SuffixSet = make(map[string]bool)
+
+	// 如果沒有字母，則提供所有26個字母
+	if len(wb.Answer) == 0 {
+		for _, letter := range "abcdefghijklmnopqrstuvwxyz" {
+			wb.PrefixSet[string(letter)] = true
+			wb.SuffixSet[string(letter)] = true
+		}
+		return
+	}
 
 	// 生成後綴集合
 	words := wb.Trie.KeysWithPrefix(wb.Answer)
@@ -248,24 +261,13 @@ func main() {
 
 	// 初始化 WordBuilder
 	r.POST("/api/wordbuilder/init", func(c *gin.Context) {
-		var req struct {
-			InitialLetter string `json:"initial_letter"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
-			return
-		}
-		if len(req.InitialLetter) != 1 || !strings.Contains("abcdefghijklmnopqrstuvwxyz", strings.ToLower(req.InitialLetter)) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Initial letter must be a single lowercase letter"})
-			return
-		}
-
 		sessionID := uuid.New().String()
-		wordBuilders[sessionID] = NewWordBuilder(strings.ToLower(req.InitialLetter), trie)
+		wordBuilders[sessionID] = NewWordBuilder(trie)
 
 		c.JSON(http.StatusOK, gin.H{
 			"session_id": sessionID,
 			"state":      wordBuilders[sessionID].GetCurrentState(),
+			"success":    true,
 		})
 	})
 
