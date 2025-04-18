@@ -69,7 +69,7 @@ const HomePage: React.FC = () => {
         setError(null);
 
         // If the updated word is valid, fetch its details
-        if (response.data.state.is_valid_word) {
+        if (response.data.state.is_valid_word && response.data.state.answer.length > 1) {
           fetchWordDetails(response.data.state.answer);
         } else {
           setWordDetails(null);
@@ -93,7 +93,7 @@ const HomePage: React.FC = () => {
       if (response.data.success) {
         setState(response.data.state);
         setError(null);
-        
+
         // If the updated word is valid, fetch its details
         if (response.data.state.is_valid_word) {
           fetchWordDetails(response.data.state.answer);
@@ -123,7 +123,7 @@ const HomePage: React.FC = () => {
         .then((response) => {
           setSessionId(savedSessionId);
           setState(response.data.state);
-          
+
           // If the word is valid, fetch its details
           if (response.data.state.is_valid_word) {
             fetchWordDetails(response.data.state.answer);
@@ -260,7 +260,7 @@ const HomePage: React.FC = () => {
               ))}
             </div>
 
-            {state.is_valid_word && wordDetails && (
+            {state.is_valid_word && state.answer.length > 1 && wordDetails && (
               <motion.div
                 className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
                 initial={{ opacity: 0, height: 0 }}
