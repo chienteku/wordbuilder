@@ -79,21 +79,23 @@ func (t *Trie) collectKeys(node *TrieNode, prefix string, results *[]string) {
 
 // WordBuilder 表示單字構建器
 type WordBuilder struct {
-	Answer    string
-	PrefixSet map[string]bool
-	SuffixSet map[string]bool
-	Step      int
-	Trie      *Trie
+	Answer      string
+	PrefixSet   map[string]bool
+	SuffixSet   map[string]bool
+	Step        int
+	Trie        *Trie
+	IsValidWord bool // Added isValidWord field
 }
 
 // NewWordBuilder 創建新的 WordBuilder
 func NewWordBuilder(trie *Trie) *WordBuilder {
 	wb := &WordBuilder{
-		Answer:    "",
-		PrefixSet: make(map[string]bool),
-		SuffixSet: make(map[string]bool),
-		Step:      0,
-		Trie:      trie,
+		Answer:      "",
+		PrefixSet:   make(map[string]bool),
+		SuffixSet:   make(map[string]bool),
+		Step:        0,
+		Trie:        trie,
+		IsValidWord: false, // Initialize as false
 	}
 
 	// 初始時提供所有26個字母
@@ -105,9 +107,11 @@ func NewWordBuilder(trie *Trie) *WordBuilder {
 	return wb
 }
 
-// IsValidWord 檢查當前答案是否為有效單字
-func (wb *WordBuilder) IsValidWord() bool {
-	return len(wb.Answer) > 0 && wb.Trie.Contains(wb.Answer)
+// CheckValidWord 檢查當前答案是否為有效單字
+func (wb *WordBuilder) CheckValidWord() bool {
+	isValid := len(wb.Answer) > 0 && wb.Trie.Contains(wb.Answer)
+	wb.IsValidWord = isValid // Update the IsValidWord field
+	return isValid
 }
 
 // AddLetter 添加字母到答案
@@ -126,8 +130,11 @@ func (wb *WordBuilder) AddLetter(letter, position string) (bool, string) {
 		return false, "Invalid position. Use 'prefix' or 'suffix'."
 	}
 
+	// Update IsValidWord field with current word validity
+	wb.CheckValidWord()
+
 	message := fmt.Sprintf("Step %d: Added '%s' as %s -> Answer: %s", wb.Step, letter, position, wb.Answer)
-	if wb.IsValidWord() {
+	if wb.IsValidWord {
 		message += fmt.Sprintf("\n*** '%s' is a valid English word! ***", wb.Answer)
 	}
 
@@ -147,8 +154,11 @@ func (wb *WordBuilder) RemoveLetter(index int) (bool, string) {
 	newAnswer := wb.Answer[:index] + wb.Answer[index+1:]
 	wb.Answer = newAnswer
 
+	// Update IsValidWord field with current word validity
+	wb.CheckValidWord()
+
 	message := fmt.Sprintf("Step %d: Removed '%s' at index %d -> Answer: %s", wb.Step, letter, index, wb.Answer)
-	if wb.IsValidWord() {
+	if wb.IsValidWord {
 		message += fmt.Sprintf("\n*** '%s' is a valid English word! ***", wb.Answer)
 	}
 
@@ -200,10 +210,11 @@ func (wb *WordBuilder) GetCurrentState() map[string]interface{} {
 		suffixSet = append(suffixSet, letter)
 	}
 	return map[string]interface{}{
-		"answer":     wb.Answer,
-		"prefix_set": prefixSet,
-		"suffix_set": suffixSet,
-		"step":       wb.Step,
+		"answer":        wb.Answer,
+		"prefix_set":    prefixSet,
+		"suffix_set":    suffixSet,
+		"step":          wb.Step,
+		"is_valid_word": wb.IsValidWord, // Include is_valid_word in the state
 	}
 }
 

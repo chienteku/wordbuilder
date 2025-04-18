@@ -8,6 +8,7 @@ interface WordBuilderState {
   prefix_set: string[];
   suffix_set: string[];
   step: number;
+  is_valid_word: boolean; // Added this field to explicitly track if the word is valid
 }
 
 interface WordDetails {
@@ -35,7 +36,6 @@ const API_BASE_URL = typeof window !== 'undefined'
 const HomePage: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [state, setState] = useState<WordBuilderState | null>(null);
-  const [isValidWord, setIsValidWord] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wordDetails, setWordDetails] = useState<WordDetails | null>(null);
 
@@ -46,7 +46,6 @@ const HomePage: React.FC = () => {
       const newSessionId = response.data.session_id || null;
       setSessionId(newSessionId);
       setState(response.data.state);
-      setIsValidWord(response.data.message?.includes('valid English word') || false);
       setError(null);
       if (newSessionId) {
         localStorage.setItem('sessionId', newSessionId);
@@ -67,11 +66,13 @@ const HomePage: React.FC = () => {
       });
       if (response.data.success) {
         setState(response.data.state);
-        setIsValidWord(response.data.message?.includes('valid English word') || false);
         setError(null);
 
-        if (isValidWord) {
+        // If the updated word is valid, fetch its details
+        if (response.data.state.is_valid_word) {
           fetchWordDetails(response.data.state.answer);
+        } else {
+          setWordDetails(null);
         }
       } else {
         setError(response.data.message || 'Failed to add letter.');
@@ -91,10 +92,10 @@ const HomePage: React.FC = () => {
       });
       if (response.data.success) {
         setState(response.data.state);
-        setIsValidWord(response.data.message?.includes('valid English word') || false);
         setError(null);
-        // Call fetchWordDetails if it's a valid word
-        if (isValidWord) {
+        
+        // If the updated word is valid, fetch its details
+        if (response.data.state.is_valid_word) {
           fetchWordDetails(response.data.state.answer);
         } else {
           // Clear word details if it's no longer a valid word
@@ -122,7 +123,11 @@ const HomePage: React.FC = () => {
         .then((response) => {
           setSessionId(savedSessionId);
           setState(response.data.state);
-          setIsValidWord(response.data.message?.includes('valid English word') || false);
+          
+          // If the word is valid, fetch its details
+          if (response.data.state.is_valid_word) {
+            fetchWordDetails(response.data.state.answer);
+          }
         })
         .catch(() => {
           localStorage.removeItem('sessionId');
@@ -255,7 +260,7 @@ const HomePage: React.FC = () => {
               ))}
             </div>
 
-            {isValidWord && wordDetails && (
+            {state.is_valid_word && wordDetails && (
               <motion.div
                 className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
                 initial={{ opacity: 0, height: 0 }}
