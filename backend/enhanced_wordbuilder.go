@@ -292,26 +292,52 @@ func (wb *EnhancedWordBuilder) UpdateSets() {
 		}
 	}
 
-	// 3. Also check for words where our answer is embedded within (not just at the end)
-	// This is critical for finding all possible prefix letters
+	// 3. Also check for words where our answer is embedded within (not just at the end or beginning)
 	for word := range wb.Dictionary.WordSet {
 		idx := strings.Index(word, wb.Answer)
-		if idx >= 0 && idx > 0 { // If found and not at the beginning
-			foundValidContinuation = true
-			// Add to valid completions if not already there
-			alreadyAdded := false
-			for _, existing := range wb.ValidCompletions {
-				if existing == word {
-					alreadyAdded = true
-					break
+		if idx >= 0 {
+			// If the word contains our answer
+
+			// A. If not at the beginning, add prefix letter
+			if idx > 0 {
+				foundValidContinuation = true
+
+				// Add to valid completions if not already there
+				alreadyAdded := false
+				for _, existing := range wb.ValidCompletions {
+					if existing == word {
+						alreadyAdded = true
+						break
+					}
 				}
-			}
-			if !alreadyAdded {
-				wb.ValidCompletions = append(wb.ValidCompletions, word)
+				if !alreadyAdded {
+					wb.ValidCompletions = append(wb.ValidCompletions, word)
+				}
+
+				// Add the prefix letter
+				wb.PrefixSet[string(word[idx-1])] = true
 			}
 
-			// Add the prefix letter
-			wb.PrefixSet[string(word[idx-1])] = true
+			// B. If not at the end, add suffix letter (THIS IS THE KEY FIX)
+			embedEndIdx := idx + len(wb.Answer)
+			if embedEndIdx < len(word) {
+				foundValidContinuation = true
+
+				// Add to valid completions if not already there
+				alreadyAdded := false
+				for _, existing := range wb.ValidCompletions {
+					if existing == word {
+						alreadyAdded = true
+						break
+					}
+				}
+				if !alreadyAdded {
+					wb.ValidCompletions = append(wb.ValidCompletions, word)
+				}
+
+				// Add the suffix letter
+				wb.SuffixSet[string(word[embedEndIdx])] = true
+			}
 		}
 	}
 
