@@ -18,7 +18,13 @@ interface ApiResponse {
   error?: string;
 }
 
-const API_BASE_URL = 'http://localhost:8080/api/wordbuilder';
+// Update API URL to use the correct port (8081 instead of 8080)
+// And add support for relative URLs when deployed
+const API_BASE_URL = typeof window !== 'undefined' 
+  ? (window.location.hostname === 'localhost' 
+    ? 'http://localhost:8081/api/wordbuilder'
+    : '/api/wordbuilder')
+  : '/api/wordbuilder';
 
 const HomePage: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
