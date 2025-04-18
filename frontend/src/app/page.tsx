@@ -9,6 +9,8 @@ interface WordBuilderState {
   suffix_set: string[];
   step: number;
   is_valid_word: boolean;
+  valid_completions?: string[]; // New field
+  suggestion?: string;          // New field
 }
 
 interface WordDetails {
@@ -247,6 +249,27 @@ const HomePage: React.FC = () => {
     );
   };
 
+  // Component to display suggested completions
+  const SuggestedCompletions = () => {
+    if (!state || !state.valid_completions || state.valid_completions.length === 0) return null;
+    
+    return (
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <h4 className="font-medium text-sm text-gray-700 mb-2">Possible words:</h4>
+        <div className="flex flex-wrap gap-2">
+          {state.valid_completions.map(word => (
+            <span key={word} className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">
+              {word}
+            </span>
+          ))}
+        </div>
+        {state.suggestion && (
+          <p className="mt-2 text-sm text-gray-600 italic">{state.suggestion}</p>
+        )}
+      </div>
+    );
+  };
+
   // Calculate min height to keep layout stable
   const detailsMinHeight = '150px';
 
@@ -331,6 +354,8 @@ const HomePage: React.FC = () => {
                       <p className="text-gray-600 italic text-sm">"{wordDetails.example}"</p>
                     )}
                   </motion.div>
+                ) : !state.is_valid_word && state.valid_completions && state.valid_completions.length > 0 ? (
+                  <SuggestedCompletions />
                 ) : null}
               </div>
             </div>
@@ -347,7 +372,7 @@ const HomePage: React.FC = () => {
 
             {/* Mobile Layout Info */}
             <div className="mt-4 text-center text-sm text-gray-500">
-              <p>Use left hand for prefix letters, right hand for suffix letters</p>
+              <p>Use left side for prefix letters, right side for suffix letters</p>
             </div>
           </>
         )}
