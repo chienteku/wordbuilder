@@ -68,7 +68,7 @@ const HomePage: React.FC = () => {
         setState(response.data.state);
         setError(null);
 
-        // If the updated word is valid, fetch its details
+        // Only fetch word details if it's valid AND has more than one letter
         if (response.data.state.is_valid_word && response.data.state.answer.length > 1) {
           fetchWordDetails(response.data.state.answer);
         } else {
@@ -79,6 +79,31 @@ const HomePage: React.FC = () => {
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to add letter.');
+    }
+  };
+
+  // Reset WordBuilder
+  const resetWordBuilder = async () => {
+    if (!sessionId) return;
+    try {
+      const response = await axios.post<ApiResponse>(`${API_BASE_URL}/reset`, {
+        session_id: sessionId
+      });
+      if (response.data.success) {
+        setState(response.data.state);
+        setWordDetails(null);
+        setError(null);
+      } else {
+        setError(response.data.message || 'Failed to reset word builder.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to reset word builder.');
+      if (err.response?.status === 404) {
+        localStorage.removeItem('sessionId');
+        setSessionId(null);
+        setState(null);
+        initializeWordBuilder();
+      }
     }
   };
 
@@ -244,7 +269,21 @@ const HomePage: React.FC = () => {
 
           {/* Current Word */}
           <div className="w-1/3 p-4 bg-white shadow flex flex-col items-center">
-            <h2 className="text-lg font-semibold mb-2">Current Word</h2>
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-lg font-semibold">Current Word</h2>
+              <motion.button
+                onClick={resetWordBuilder}
+                className="p-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 flex items-center justify-center"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                disabled={state.answer.length === 0}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                </svg>
+              </motion.button>
+            </div>
             <div className="flex gap-1 mb-4">
               {state.answer.split('').map((letter, index) => (
                 <motion.span
@@ -259,7 +298,6 @@ const HomePage: React.FC = () => {
                 </motion.span>
               ))}
             </div>
-
             {state.is_valid_word && state.answer.length > 1 && wordDetails && (
               <motion.div
                 className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200"

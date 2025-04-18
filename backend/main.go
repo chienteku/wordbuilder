@@ -114,6 +114,20 @@ func (wb *WordBuilder) CheckValidWord() bool {
 	return isValid
 }
 
+func (wb *WordBuilder) Reset() {
+	wb.Answer = ""
+	wb.Step = 0
+	wb.IsValidWord = false
+
+	// Reset prefix and suffix sets to include all 26 letters
+	wb.PrefixSet = make(map[string]bool)
+	wb.SuffixSet = make(map[string]bool)
+	for _, letter := range "abcdefghijklmnopqrstuvwxyz" {
+		wb.PrefixSet[string(letter)] = true
+		wb.SuffixSet[string(letter)] = true
+	}
+}
+
 // AddLetter 添加字母到答案
 func (wb *WordBuilder) AddLetter(letter, position string) (bool, string) {
 	if position == "prefix" {
@@ -279,6 +293,30 @@ func main() {
 			"session_id": sessionID,
 			"state":      wordBuilders[sessionID].GetCurrentState(),
 			"success":    true,
+		})
+	})
+
+	r.POST("/api/wordbuilder/reset", func(c *gin.Context) {
+		var req struct {
+			SessionID string `json:"session_id"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		wb, exists := wordBuilders[req.SessionID]
+		if !exists {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
+			return
+		}
+
+		wb.Reset()
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"state":   wb.GetCurrentState(),
+			"message": "Word builder has been reset.",
 		})
 	})
 
