@@ -1,0 +1,118 @@
+###
+# WordBuilder API Test File
+# For use with the REST Client VSCode extension
+# https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+###
+
+@baseUrl = http://localhost:8081/api/wordbuilder
+@contentType = application/json
+
+### Initialize a new WordBuilder session
+# This creates a new session and returns a session_id
+# @name init
+POST {{baseUrl}}/init HTTP/1.1
+Content-Type: {{contentType}}
+
+### Store session ID for subsequent requests
+@sessionId = {{init.response.body.session_id}}
+
+### Get the current state
+# Use this to check the current state of your WordBuilder
+
+GET {{baseUrl}}/state?session_id={{sessionId}} HTTP/1.1
+
+### Add a letter as prefix
+# Adds a letter to the beginning of the current word
+
+POST {{baseUrl}}/add HTTP/1.1
+Content-Type: {{contentType}}
+
+{
+    "session_id": "{{sessionId}}",
+    "letter": "a",
+    "position": "prefix"
+}
+
+### Add a letter as suffix
+# Adds a letter to the end of the current word
+
+POST {{baseUrl}}/add HTTP/1.1
+Content-Type: {{contentType}}
+
+{
+    "session_id": "{{sessionId}}",
+    "letter": "t",
+    "position": "suffix"
+}
+
+### Remove a letter at specific index
+# Remove a letter at the specified index (0-based)
+# Example: to remove the first letter, use index 0
+
+POST {{baseUrl}}/remove HTTP/1.1
+Content-Type: {{contentType}}
+
+{
+    "session_id": "{{sessionId}}",
+    "index": 0
+}
+
+### Reset the WordBuilder
+# This clears the current word and resets the game state
+
+POST {{baseUrl}}/reset HTTP/1.1
+Content-Type: {{contentType}}
+
+{
+    "session_id": "{{sessionId}}"
+}
+
+###
+# Test Sequence Example
+# The following sequence shows how you might build words step by step
+###
+
+### 1. Start new game
+POST {{baseUrl}}/init HTTP/1.1
+Content-Type: {{contentType}}
+
+### 2. Add 'c' as prefix
+POST {{baseUrl}}/add HTTP/1.1
+Content-Type: {{contentType}}
+
+{
+    "session_id": "{{sessionId}}",
+    "letter": "c",
+    "position": "prefix"
+}
+
+### 3. Add 'a' as suffix
+POST {{baseUrl}}/add HTTP/1.1
+Content-Type: {{contentType}}
+
+{
+    "session_id": "{{sessionId}}",
+    "letter": "a",
+    "position": "suffix"
+}
+
+### 4. Add 't' as suffix to make "cat"
+POST {{baseUrl}}/add HTTP/1.1
+Content-Type: {{contentType}}
+
+{
+    "session_id": "{{sessionId}}",
+    "letter": "t",
+    "position": "suffix"
+}
+
+### 5. Check state to see valid word indication
+GET {{baseUrl}}/state?session_id={{sessionId}} HTTP/1.1
+
+### 6. Reset game
+POST {{baseUrl}}/reset HTTP/1.1
+Content-Type: {{contentType}}
+
+{
+    "session_id": "{{sessionId}}"
+}
