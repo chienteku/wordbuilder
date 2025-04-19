@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // TrieNode represents a node in the Trie
@@ -70,11 +72,29 @@ func (t *Trie) collectKeys(node *TrieNode, prefix string, results *[]string) {
 	}
 }
 
+// GetNextLetters returns the possible next letters after a given prefix
+func (t *Trie) GetNextLetters(prefix string) []string {
+	node := t.Root
+	for _, ch := range prefix {
+		if child, exists := node.Children[ch]; exists {
+			node = child
+		} else {
+			return []string{}
+		}
+	}
+	letters := make([]string, 0, len(node.Children))
+	for ch := range node.Children {
+		letters = append(letters, string(ch))
+	}
+	return letters
+}
+
 // WordDictionary holds both forward and reverse tries for efficient lookups
 type WordDictionary struct {
 	WordSet     map[string]bool // For quick word validation
 	ForwardTrie *Trie           // For suffix lookups
 	ReverseTrie *Trie           // For prefix lookups
+	WordList    []string        // Add this field
 }
 
 // NewWordDictionary creates a new dictionary with both tries
@@ -83,16 +103,15 @@ func NewWordDictionary(wordList []string) *WordDictionary {
 		WordSet:     make(map[string]bool),
 		ForwardTrie: NewTrie(),
 		ReverseTrie: NewTrie(),
+		WordList:    make([]string, 0, len(wordList)),
 	}
 
 	for _, word := range wordList {
 		word = strings.ToLower(word)
 		dict.WordSet[word] = true
 		dict.ForwardTrie.Insert(word)
-
-		// Insert reversed word into reverse trie
-		reversed := reverseString(word)
-		dict.ReverseTrie.Insert(reversed)
+		dict.ReverseTrie.Insert(reverseString(word))
+		dict.WordList = append(dict.WordList, word) // Populate WordList
 	}
 
 	return dict
@@ -260,103 +279,109 @@ func (wb *EnhancedWordBuilder) UpdateSets() {
 
 	foundValidContinuation := false
 
-	// 1. Find valid suffix letters (using ForwardTrie)
-	wordsWithPrefix := wb.Dictionary.FindWordsWithPrefix(wb.Answer)
-	for _, word := range wordsWithPrefix {
-		if len(word) > len(wb.Answer) {
-			foundValidContinuation = true
-			// Add this as a possible completion
-			wb.ValidCompletions = append(wb.ValidCompletions, word)
-			// Add the next letter to suffix set
-			nextLetter := string(word[len(wb.Answer)])
-			wb.SuffixSet[nextLetter] = true
+	// 1. Suffix letters from ForwardTrie
+	suffixLetters := wb.Dictionary.ForwardTrie.GetNextLetters(wb.Answer)
+	for _, letter := range suffixLetters {
+		wb.SuffixSet[letter] = true
+		foundValidContinuation = true
+	}
+	// Optionally collect some completions
+	if len(suffixLetters) > 0 {
+		words := wb.Dictionary.FindWordsWithPrefix(wb.Answer)
+		for i, word := range words {
+			if i >= 5 { // Limit to reduce overhead
+				break
+			}
+			if len(word) > len(wb.Answer) {
+				wb.ValidCompletions = append(wb.ValidCompletions, word)
+			}
 		}
 	}
 
-	// 2. Find valid prefix letters (using ReverseTrie for words ending with our answer)
+	// 2. Prefix letters from ReverseTrie
 	reversedAnswer := reverseString(wb.Answer)
-	wordsWithSuffix := wb.Dictionary.ReverseTrie.KeysWithPrefix(reversedAnswer)
-	for _, revWord := range wordsWithSuffix {
-		if len(revWord) > len(reversedAnswer) {
-			foundValidContinuation = true
-			// Convert back to normal orientation
-			word := reverseString(revWord)
-			// Add to valid completions
-			wb.ValidCompletions = append(wb.ValidCompletions, word)
-			// Add the prefix letter (the letter right before our answer in the word)
-			prefixIndex := len(word) - len(wb.Answer) - 1
-			if prefixIndex >= 0 {
-				prefixLetter := string(word[prefixIndex])
-				wb.PrefixSet[prefixLetter] = true
+	prefixLetters := wb.Dictionary.ReverseTrie.GetNextLetters(reversedAnswer)
+	for _, letter := range prefixLetters {
+		wb.PrefixSet[letter] = true
+		foundValidContinuation = true
+	}
+	// Optionally collect some completions
+	if len(prefixLetters) > 0 {
+		revWords := wb.Dictionary.ReverseTrie.KeysWithPrefix(reversedAnswer)
+		for i, revWord := range revWords {
+			if i >= 5 { // Limit to reduce overhead
+				break
+			}
+			if len(revWord) > len(reversedAnswer) {
+				wb.ValidCompletions = append(wb.ValidCompletions, reverseString(revWord))
 			}
 		}
 	}
 
-	// 3. Also check for words where our answer is embedded within (not just at the end or beginning)
-	for word := range wb.Dictionary.WordSet {
-		idx := strings.Index(word, wb.Answer)
-		if idx >= 0 {
-			// If the word contains our answer
+	// 3. Embedded check with parallelism
+	wordList := wb.Dictionary.WordList
+	numParts := runtime.NumCPU()
+	partSize := (len(wordList) + numParts - 1) / numParts
+	var wg sync.WaitGroup
+	type Result struct {
+		prefixSet map[string]bool
+		suffixSet map[string]bool
+	}
+	results := make(chan Result, numParts)
 
-			// A. If not at the beginning, add prefix letter
-			if idx > 0 {
-				foundValidContinuation = true
-
-				// Add to valid completions if not already there
-				alreadyAdded := false
-				for _, existing := range wb.ValidCompletions {
-					if existing == word {
-						alreadyAdded = true
-						break
+	for i := 0; i < numParts; i++ {
+		wg.Add(1)
+		start := i * partSize
+		end := start + partSize
+		if end > len(wordList) {
+			end = len(wordList)
+		}
+		go func(words []string) {
+			defer wg.Done()
+			localPrefix := make(map[string]bool)
+			localSuffix := make(map[string]bool)
+			for _, word := range words {
+				idx := strings.Index(word, wb.Answer)
+				if idx >= 0 {
+					foundValidContinuation = true
+					if idx > 0 {
+						localPrefix[string(word[idx-1])] = true
+					}
+					embedEndIdx := idx + len(wb.Answer)
+					if embedEndIdx < len(word) {
+						localSuffix[string(word[embedEndIdx])] = true
 					}
 				}
-				if !alreadyAdded {
-					wb.ValidCompletions = append(wb.ValidCompletions, word)
-				}
-
-				// Add the prefix letter
-				wb.PrefixSet[string(word[idx-1])] = true
 			}
+			results <- Result{localPrefix, localSuffix}
+		}(wordList[start:end])
+	}
 
-			// B. If not at the end, add suffix letter (THIS IS THE KEY FIX)
-			embedEndIdx := idx + len(wb.Answer)
-			if embedEndIdx < len(word) {
-				foundValidContinuation = true
+	// Collect results concurrently
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
-				// Add to valid completions if not already there
-				alreadyAdded := false
-				for _, existing := range wb.ValidCompletions {
-					if existing == word {
-						alreadyAdded = true
-						break
-					}
-				}
-				if !alreadyAdded {
-					wb.ValidCompletions = append(wb.ValidCompletions, word)
-				}
-
-				// Add the suffix letter
-				wb.SuffixSet[string(word[embedEndIdx])] = true
-			}
+	for res := range results {
+		for letter := range res.prefixSet {
+			wb.PrefixSet[letter] = true
+		}
+		for letter := range res.suffixSet {
+			wb.SuffixSet[letter] = true
 		}
 	}
 
-	// Sort completions by length for better suggestions
-	if len(wb.ValidCompletions) > 0 {
+	// Generate suggestion (simplified)
+	if len(wb.ValidCompletions) > 0 && !wb.IsValidWord {
 		sort.Slice(wb.ValidCompletions, func(i, j int) bool {
 			return len(wb.ValidCompletions[i]) < len(wb.ValidCompletions[j])
 		})
-
-		// Generate a suggestion
-		shortestWord := wb.ValidCompletions[0]
-		if strings.HasPrefix(shortestWord, wb.Answer) {
-			// Suggest adding to suffix
-			if len(shortestWord) > len(wb.Answer) {
-				wb.Suggestion = "Try adding '" + string(shortestWord[len(wb.Answer)]) + "' as suffix"
-			}
-		} else if idx := strings.Index(shortestWord, wb.Answer); idx > 0 {
-			// Suggest adding to prefix
-			wb.Suggestion = "Try adding '" + string(shortestWord[idx-1]) + "' as prefix"
+		shortest := wb.ValidCompletions[0]
+		if strings.HasPrefix(shortest, wb.Answer) && len(shortest) > len(wb.Answer) {
+			wb.Suggestion = "Try adding '" + string(shortest[len(wb.Answer)]) + "' as suffix"
+		} else if idx := strings.Index(shortest, wb.Answer); idx > 0 {
+			wb.Suggestion = "Try adding '" + string(shortest[idx-1]) + "' as prefix"
 		}
 	}
 
@@ -366,6 +391,7 @@ func (wb *EnhancedWordBuilder) UpdateSets() {
 		// DO NOT add fallback letters - leave the sets empty
 		wb.Suggestion = "This isn't a valid prefix or suffix of any word. Try removing some letters."
 	}
+
 }
 
 // GetCurrentState returns the current state as a map
