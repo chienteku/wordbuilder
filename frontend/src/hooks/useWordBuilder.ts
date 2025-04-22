@@ -8,6 +8,7 @@ export const useWordBuilder = () => {
     const [error, setError] = useState<string | null>(null);
     const [wordDetails, setWordDetails] = useState<WordDetails | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
+    const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
     // Initialize WordBuilder
     const initializeWordBuilder = async () => {
@@ -148,6 +149,45 @@ export const useWordBuilder = () => {
             initializeWordBuilder();
         }
     }, [sessionId]);
+
+    // Update the useEffect to track initialization
+    useEffect(() => {
+        const initSession = async () => {
+            const savedSessionId = localStorage.getItem('sessionId');
+            if (savedSessionId) {
+                try {
+                    const response = await wordBuilderService.getState(savedSessionId);
+                    setSessionId(savedSessionId);
+                    setState(response.state);
+
+                    // If the word is valid, fetch its details
+                    if (response.state.is_valid_word && response.state.answer.length > 1) {
+                        fetchWordDetails(response.state.answer);
+                    }
+                    setIsInitialized(true);
+                } catch (err) {
+                    console.error("Failed to restore session:", err);
+                    localStorage.removeItem('sessionId');
+                    await createNewSession();
+                }
+            } else {
+                await createNewSession();
+            }
+        };
+
+        const createNewSession = async () => {
+            try {
+                await initializeWordBuilder();
+                setIsInitialized(true);
+            } catch (err) {
+                console.error("Failed to create new session:", err);
+            }
+        };
+
+        if (!isInitialized) {
+            initSession();
+        }
+    }, [isInitialized]);
 
     return {
         state,

@@ -19,7 +19,14 @@ func NewWordBuilderService(dictionary *models.WordDictionary) *WordBuilderServic
 }
 
 // CreateSession initializes a new game session
-func (s *WordBuilderService) CreateSession(sessionID string) *models.EnhancedWordBuilder {
+func (s *WordBuilderService) CreateSession(sessionID string, dictService *DictionaryService) *models.EnhancedWordBuilder {
+	// Safety check - ensure dictionary exists
+	if s.Dictionary == nil {
+		// Use provided dictionary service for fallback
+		wordList, _ := dictService.LoadWordList("words.txt")
+		s.Dictionary = dictService.CreateDictionary(wordList)
+	}
+
 	builder := models.NewEnhancedWordBuilder(s.Dictionary)
 	s.Sessions[sessionID] = builder
 	return builder

@@ -3,11 +3,10 @@ package controllers
 import (
 	"net/http"
 	"strings"
+	"wordbuilder/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-
-	"wordbuilder/services"
 )
 
 // WordBuilderController handles HTTP requests for wordbuilder game
@@ -25,7 +24,8 @@ func NewWordBuilderController(wbService *services.WordBuilderService) *WordBuild
 // InitSession initializes a new WordBuilder session
 func (c *WordBuilderController) InitSession(ctx *gin.Context) {
 	sessionID := uuid.New().String()
-	builder := c.WordBuilderService.CreateSession(sessionID)
+	dictService := services.NewDictionaryService() // Create it here
+	builder := c.WordBuilderService.CreateSession(sessionID, dictService)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"session_id": sessionID,

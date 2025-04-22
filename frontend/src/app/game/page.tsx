@@ -1,5 +1,5 @@
 "use client"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWordBuilder } from '@/hooks/useWordBuilder';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
@@ -20,16 +20,31 @@ const GamePage = () => {
     resetWordBuilder,
     addLetter,
     removeLetter,
+    loading
   } = useWordBuilder();
 
   const [activeWordListId, setActiveWordListId] = useState<number | null>(null);
   const [changeMessage, setChangeMessage] = useState<string | null>(null);
+
+  // Load active word list ID from localStorage on component mount
+  useEffect(() => {
+    const storedWordListId = localStorage.getItem('activeWordListId');
+    if (storedWordListId) {
+      const wordListId = parseInt(storedWordListId, 10);
+      if (!isNaN(wordListId)) {
+        setActiveWordListId(wordListId);
+      }
+    }
+  }, []);
 
   // Handle word list selection
   const handleSelectWordList = async (wordListId: number) => {
     try {
       await wordListService.useWordList(wordListId);
       setActiveWordListId(wordListId);
+      
+      // Save to localStorage
+      localStorage.setItem('activeWordListId', wordListId.toString());
 
       // Show message
       setChangeMessage('Dictionary changed! Please start a new word.');
@@ -66,7 +81,12 @@ const GamePage = () => {
           </div>
         )}
 
-        {state && (
+        {loading && !state ? (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
+            <p>Loading dictionary...</p>
+          </div>
+        ) : state ? (
           <>
             {/* Current Word Section */}
             <CurrentWord
@@ -114,6 +134,16 @@ const GamePage = () => {
               <p>Use left side for prefix letters, right side for suffix letters</p>
             </div>
           </>
+        ) : (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <p className="text-red-600 mb-4">Failed to load word builder. Please try again.</p>
+            <button
+              onClick={() => resetWordBuilder()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
         )}
 
         {/* Error Message */}
