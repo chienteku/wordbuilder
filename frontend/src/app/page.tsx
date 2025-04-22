@@ -44,13 +44,22 @@ export default function HomePage() {
                     </ul>
                 </div>
 
-                <div className="flex justify-center">
+                <div className="flex flex-col sm:flex-row justify-center gap-4">
                     <motion.div
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                     >
-                        <Link href="/game" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200">
+                        <Link href="/game" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 w-full text-center">
                             Start Playing
+                        </Link>
+                    </motion.div>
+
+                    <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        <Link href="/dashboard" className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-200 w-full text-center">
+                            Word List Dashboard
                         </Link>
                     </motion.div>
                 </div>
