@@ -1,4 +1,4 @@
-package main
+package models
 
 import (
 	"fmt"
@@ -6,149 +6,9 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	utils "wordbuilder/utils"
 )
-
-// TrieNode represents a node in the Trie
-type TrieNode struct {
-	Children map[rune]*TrieNode
-	IsWord   bool
-}
-
-// Trie represents a dictionary structure for efficient prefix searches
-type Trie struct {
-	Root *TrieNode
-}
-
-// NewTrie creates a new Trie
-func NewTrie() *Trie {
-	return &Trie{Root: &TrieNode{Children: make(map[rune]*TrieNode)}}
-}
-
-// Insert adds a word to the Trie
-func (t *Trie) Insert(word string) {
-	node := t.Root
-	for _, ch := range word {
-		if _, exists := node.Children[ch]; !exists {
-			node.Children[ch] = &TrieNode{Children: make(map[rune]*TrieNode)}
-		}
-		node = node.Children[ch]
-	}
-	node.IsWord = true
-}
-
-// Contains checks if a word exists in the Trie
-func (t *Trie) Contains(word string) bool {
-	node := t.Root
-	for _, ch := range word {
-		if _, exists := node.Children[ch]; !exists {
-			return false
-		}
-		node = node.Children[ch]
-	}
-	return node.IsWord
-}
-
-// KeysWithPrefix returns all words that start with the given prefix
-func (t *Trie) KeysWithPrefix(prefix string) []string {
-	var results []string
-	node := t.Root
-	for _, ch := range prefix {
-		if _, exists := node.Children[ch]; !exists {
-			return results
-		}
-		node = node.Children[ch]
-	}
-	t.collectKeys(node, prefix, &results)
-	return results
-}
-
-// collectKeys recursively collects all words from the current node
-func (t *Trie) collectKeys(node *TrieNode, prefix string, results *[]string) {
-	if node.IsWord {
-		*results = append(*results, prefix)
-	}
-	for ch, child := range node.Children {
-		t.collectKeys(child, prefix+string(ch), results)
-	}
-}
-
-// GetNextLetters returns the possible next letters after a given prefix
-func (t *Trie) GetNextLetters(prefix string) []string {
-	node := t.Root
-	for _, ch := range prefix {
-		if child, exists := node.Children[ch]; exists {
-			node = child
-		} else {
-			return []string{}
-		}
-	}
-	letters := make([]string, 0, len(node.Children))
-	for ch := range node.Children {
-		letters = append(letters, string(ch))
-	}
-	return letters
-}
-
-// WordDictionary holds both forward and reverse tries for efficient lookups
-type WordDictionary struct {
-	WordSet     map[string]bool // For quick word validation
-	ForwardTrie *Trie           // For suffix lookups
-	ReverseTrie *Trie           // For prefix lookups
-	WordList    []string        // Add this field
-}
-
-// NewWordDictionary creates a new dictionary with both tries
-func NewWordDictionary(wordList []string) *WordDictionary {
-	dict := &WordDictionary{
-		WordSet:     make(map[string]bool),
-		ForwardTrie: NewTrie(),
-		ReverseTrie: NewTrie(),
-		WordList:    make([]string, 0, len(wordList)),
-	}
-
-	for _, word := range wordList {
-		word = strings.ToLower(word)
-		dict.WordSet[word] = true
-		dict.ForwardTrie.Insert(word)
-		dict.ReverseTrie.Insert(reverseString(word))
-		dict.WordList = append(dict.WordList, word) // Populate WordList
-	}
-
-	return dict
-}
-
-// Helper function to reverse a string
-func reverseString(s string) string {
-	runes := []rune(s)
-	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-		runes[i], runes[j] = runes[j], runes[i]
-	}
-	return string(runes)
-}
-
-// ContainsWord checks if a word exists in the dictionary
-func (d *WordDictionary) ContainsWord(word string) bool {
-	return d.WordSet[word]
-}
-
-// FindWordsWithPrefix returns all words starting with the given prefix
-func (d *WordDictionary) FindWordsWithPrefix(prefix string) []string {
-	return d.ForwardTrie.KeysWithPrefix(prefix)
-}
-
-// FindWordsWithSuffix returns all words ending with the given suffix
-func (d *WordDictionary) FindWordsWithSuffix(suffix string) []string {
-	reversed := reverseString(suffix)
-	reversedWords := d.ReverseTrie.KeysWithPrefix(reversed)
-
-	// Convert back to normal order
-	result := make([]string, len(reversedWords))
-	for i, word := range reversedWords {
-		result[i] = reverseString(word)
-	}
-
-	return result
-}
 
 // EnhancedWordBuilder represents the word building game state
 type EnhancedWordBuilder struct {
@@ -299,7 +159,7 @@ func (wb *EnhancedWordBuilder) UpdateSets() {
 	}
 
 	// 2. Prefix letters from ReverseTrie
-	reversedAnswer := reverseString(wb.Answer)
+	reversedAnswer := utils.ReverseString(wb.Answer)
 	prefixLetters := wb.Dictionary.ReverseTrie.GetNextLetters(reversedAnswer)
 	for _, letter := range prefixLetters {
 		wb.PrefixSet[letter] = true
@@ -313,7 +173,7 @@ func (wb *EnhancedWordBuilder) UpdateSets() {
 				break
 			}
 			if len(revWord) > len(reversedAnswer) {
-				wb.ValidCompletions = append(wb.ValidCompletions, reverseString(revWord))
+				wb.ValidCompletions = append(wb.ValidCompletions, utils.ReverseString(revWord))
 			}
 		}
 	}
@@ -423,12 +283,4 @@ func (wb *EnhancedWordBuilder) GetCurrentState() map[string]interface{} {
 		"valid_completions": displayCompletions,
 		"suggestion":        wb.Suggestion,
 	}
-}
-
-// Helper function to determine minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

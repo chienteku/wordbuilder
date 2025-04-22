@@ -2,11 +2,14 @@ package main
 
 import (
 	"testing"
+	. "wordbuilder/models"
+	"wordbuilder/services"
 )
 
 // Benchmark for dictionary creation
 func BenchmarkDictionaryCreation(b *testing.B) {
-	wordList, _ := loadWordList("words.txt")
+	dictService := services.NewDictionaryService()
+	wordList, _ := dictService.LoadWordList("words.txt")
 
 	b.ResetTimer() // Ignore setup time
 	for i := 0; i < b.N; i++ {
@@ -16,7 +19,8 @@ func BenchmarkDictionaryCreation(b *testing.B) {
 
 // Benchmark for initial WordBuilder state
 func BenchmarkInitialWordBuilderState(b *testing.B) {
-	wordList, _ := loadWordList("words.txt")
+	dictService := services.NewDictionaryService()
+	wordList, _ := dictService.LoadWordList("words.txt")
 	dictionary := NewWordDictionary(wordList)
 
 	b.ResetTimer() // Ignore setup time
@@ -27,7 +31,8 @@ func BenchmarkInitialWordBuilderState(b *testing.B) {
 
 // Benchmark for single-letter suffix searches
 func BenchmarkSingleLetterSuffixSearch(b *testing.B) {
-	wordList, _ := loadWordList("words.txt")
+	dictService := services.NewDictionaryService()
+	wordList, _ := dictService.LoadWordList("words.txt")
 	dictionary := NewWordDictionary(wordList)
 
 	// Test different letters
