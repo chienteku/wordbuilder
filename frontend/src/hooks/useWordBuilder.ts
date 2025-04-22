@@ -87,7 +87,12 @@ export const useWordBuilder = () => {
 
     // Reset WordBuilder
     const resetWordBuilder = async () => {
-        if (!sessionId) return;
+        if (!sessionId) {
+            // If no session, create a new one
+            initializeWordBuilder();
+            return;
+        }
+
         try {
             setLoading(true);
             const response = await wordBuilderService.resetSession(sessionId);
@@ -151,6 +156,7 @@ export const useWordBuilder = () => {
         loading,
         addLetter,
         removeLetter,
-        resetWordBuilder
+        resetWordBuilder,
+        initializeWordBuilder
     };
 };

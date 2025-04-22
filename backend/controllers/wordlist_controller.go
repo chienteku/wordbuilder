@@ -14,15 +14,17 @@ import (
 
 // WordListController handles HTTP requests for word list management
 type WordListController struct {
-	WordListService *services.WordListService
-	MaxFileSize     int64
+	WordListService    *services.WordListService
+	WordBuilderService *services.WordBuilderService
+	MaxFileSize        int64
 }
 
 // NewWordListController creates a new word list controller
-func NewWordListController(wordListService *services.WordListService) *WordListController {
+func NewWordListController(wordListService *services.WordListService, wordBuilderService *services.WordBuilderService) *WordListController {
 	return &WordListController{
-		WordListService: wordListService,
-		MaxFileSize:     10 * 1024 * 1024, // Default to 10MB max file size
+		WordListService:    wordListService,
+		WordBuilderService: wordBuilderService,
+		MaxFileSize:        10 * 1024 * 1024, // Default to 10MB max file size
 	}
 }
 
@@ -285,9 +287,9 @@ func (c *WordListController) UseWordList(ctx *gin.Context) {
 	}
 
 	// Update the word builder service with the new dictionary
-	// This assumes the word builder service is accessible here,
-	// which might require passing it to the controller or using a global registry
-	// For simplicity, we'll just return a message
+	// This is the critical part - we need to update the service's dictionary
+	c.WordBuilderService.UpdateDictionary(dictionary)
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Word list loaded successfully with %d words", len(dictionary.WordList)),
 	})

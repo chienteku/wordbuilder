@@ -1,8 +1,11 @@
 "use client"
+import { useState } from 'react';
 import { useWordBuilder } from '@/hooks/useWordBuilder';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 import { LetterSet } from '@/components/game/LetterSet';
+import { WordListSelector } from '@/components/game/WordListSelector';
+import { wordListService } from '@/services/wordlist-service';
 import {
   CurrentWord,
   WordDetailsDisplay,
@@ -14,11 +17,34 @@ const GamePage = () => {
     state,
     error,
     wordDetails,
-    loading,
+    resetWordBuilder,
     addLetter,
     removeLetter,
-    resetWordBuilder
   } = useWordBuilder();
+
+  const [activeWordListId, setActiveWordListId] = useState<number | null>(null);
+  const [changeMessage, setChangeMessage] = useState<string | null>(null);
+
+  // Handle word list selection
+  const handleSelectWordList = async (wordListId: number) => {
+    try {
+      await wordListService.useWordList(wordListId);
+      setActiveWordListId(wordListId);
+
+      // Show message
+      setChangeMessage('Dictionary changed! Please start a new word.');
+
+      // Reset the game
+      resetWordBuilder();
+
+      // Clear message after 5 seconds
+      setTimeout(() => {
+        setChangeMessage(null);
+      }, 5000);
+    } catch (err) {
+      throw err;
+    }
+  };
 
   // Calculate min height to keep layout stable
   const detailsMinHeight = '150px';
@@ -26,7 +52,19 @@ const GamePage = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-4 flex flex-col items-center">
       <div className="w-full max-w-lg">
-        <PageHeader title="Word Builder" showHomeLink={true} />
+        <div className="flex flex-col gap-4 mb-6">
+          <PageHeader title="Word Builder" showHomeLink={true} />
+          <WordListSelector
+            activeWordListId={activeWordListId}
+            onSelectWordList={handleSelectWordList}
+          />
+        </div>
+
+        {changeMessage && (
+          <div className="mb-4 p-3 bg-blue-100 text-blue-800 rounded-md">
+            {changeMessage}
+          </div>
+        )}
 
         {state && (
           <>

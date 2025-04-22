@@ -83,7 +83,7 @@ func main() {
 
 	// Initialize controllers
 	wordBuilderController := controllers.NewWordBuilderController(wordBuilderService)
-	wordListController := controllers.NewWordListController(wordListService)
+	wordListController := controllers.NewWordListController(wordListService, wordBuilderService) // Pass wordBuilderService to the controller
 
 	// Initialize Gin
 	r := gin.Default()
