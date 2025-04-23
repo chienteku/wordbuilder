@@ -60,20 +60,25 @@ export const wordBuilderService = {
 
 // Dictionary API service
 export const dictionaryService = {
-    // Fetch word details from an external dictionary API
+    // Updated to use our backend proxy for word details
     getWordDetails: async (word: string) => {
-        const response = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-        const data = response.data[0];
-
-        return {
-            pronunciation: data.phonetics[0]?.text || '',
-            audio: data.phonetics[0]?.audio || '',
-            meaning: data.meanings[0]?.definitions[0]?.definition || '',
-            example: data.meanings[0]?.definitions[0]?.example || '',
-            imageUrl: data.imageUrl,
-        };
+        try {
+            // Call our backend endpoint that gets word details
+            const response = await axios.get(`${DICTIONARY_API_BASE_URL}/details/${encodeURIComponent(word)}`);
+            return response.data;
+        } catch (err) {
+            console.error('Failed to fetch word details:', err);
+            // Return default empty values if the API call fails
+            return {
+                pronunciation: '',
+                audio: '',
+                meaning: 'Definition not available',
+                example: ''
+            };
+        }
     },
 
+    // Method to fetch a word image from our backend proxy
     getWordImage: async (word: string) => {
         try {
             const response = await axios.get(`${DICTIONARY_API_BASE_URL}/image/${encodeURIComponent(word)}`);
@@ -84,22 +89,21 @@ export const dictionaryService = {
         }
     },
 
-    // Enhanced getWordDetails that also fetches an image
-    getWordDetailsWithImage: async (word: string) => {
+    // Optimized method that fetches both details and image in one request
+    getCompleteWordDetails: async (word: string) => {
         try {
-            // Get word definition details
-            const details = await dictionaryService.getWordDetails(word);
-
-            // Also get an image for the word
-            const imageUrl = await dictionaryService.getWordImage(word);
-            if (imageUrl) {
-                details.imageUrl = imageUrl;
-            }
-
-            return details;
+            const response = await axios.get(`${DICTIONARY_API_BASE_URL}/complete/${encodeURIComponent(word)}`);
+            return response.data;
         } catch (err) {
-            console.error('Failed to fetch word details:', err);
-            throw err;
+            console.error('Failed to fetch complete word details:', err);
+            // Return default empty values if the API call fails
+            return {
+                pronunciation: '',
+                audio: '',
+                meaning: 'Definition not available',
+                example: '',
+                imageUrl: null
+            };
         }
     }
 };

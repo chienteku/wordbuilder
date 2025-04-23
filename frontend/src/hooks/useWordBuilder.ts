@@ -120,7 +120,7 @@ export const useWordBuilder = () => {
     // Fetch word details from dictionary API
     const fetchWordDetails = async (word: string) => {
         try {
-            const details = await dictionaryService.getWordDetailsWithImage(word);
+            const details = await dictionaryService.getCompleteWordDetails(word);
             setWordDetails(details);
         } catch (err) {
             console.error('Failed to fetch word details:', err);
