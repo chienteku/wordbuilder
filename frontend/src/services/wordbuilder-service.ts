@@ -7,6 +7,12 @@ const API_BASE_URL = typeof window !== 'undefined'
         : '/api/wordbuilder')
     : '/api/wordbuilder';
 
+const DICTIONARY_API_BASE_URL = typeof window !== 'undefined'
+    ? (window.location.hostname === 'localhost'
+        ? 'http://localhost:8081/api/dictionary'
+        : '/api/dictionary')
+    : '/api/dictionary';
+
 export const wordBuilderService = {
     // Initialize a new WordBuilder session
     initSession: async (): Promise<ApiResponse> => {
@@ -63,7 +69,37 @@ export const dictionaryService = {
             pronunciation: data.phonetics[0]?.text || '',
             audio: data.phonetics[0]?.audio || '',
             meaning: data.meanings[0]?.definitions[0]?.definition || '',
-            example: data.meanings[0]?.definitions[0]?.example || ''
+            example: data.meanings[0]?.definitions[0]?.example || '',
+            imageUrl: data.imageUrl,
         };
+    },
+
+    getWordImage: async (word: string) => {
+        try {
+            const response = await axios.get(`${DICTIONARY_API_BASE_URL}/image/${encodeURIComponent(word)}`);
+            return response.data.imageUrl || null;
+        } catch (error) {
+            console.error('Failed to fetch word image:', error);
+            return null;
+        }
+    },
+
+    // Enhanced getWordDetails that also fetches an image
+    getWordDetailsWithImage: async (word: string) => {
+        try {
+            // Get word definition details
+            const details = await dictionaryService.getWordDetails(word);
+
+            // Also get an image for the word
+            const imageUrl = await dictionaryService.getWordImage(word);
+            if (imageUrl) {
+                details.imageUrl = imageUrl;
+            }
+
+            return details;
+        } catch (err) {
+            console.error('Failed to fetch word details:', err);
+            throw err;
+        }
     }
 };

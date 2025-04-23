@@ -90,6 +90,22 @@ export const WordDetailsDisplay: React.FC<WordDetailsDisplayProps> = ({ word, de
                     </button>
                 )}
             </div>
+
+            {/* Add this new section to display the image */}
+            {details.imageUrl && (
+                <div className="mb-3">
+                    <img
+                        src={details.imageUrl}
+                        alt={`Image for ${word}`}
+                        className="w-full h-48 object-cover rounded-md mb-3"
+                        onError={(e) => {
+                            // Hide the image on error
+                            e.currentTarget.style.display = 'none';
+                        }}
+                    />
+                </div>
+            )}
+
             <p className="text-gray-800 mb-2 text-sm">{details.meaning}</p>
             {details.example && (
                 <p className="text-gray-600 italic text-sm">"{details.example}"</p>

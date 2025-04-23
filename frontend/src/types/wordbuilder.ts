@@ -13,6 +13,7 @@ export interface WordDetails {
     audio: string;
     meaning: string;
     example: string;
+    imageUrl?: string;
 }
 
 export interface ApiResponse {

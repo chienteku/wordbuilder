@@ -84,6 +84,7 @@ func main() {
 	// Initialize controllers
 	wordBuilderController := controllers.NewWordBuilderController(wordBuilderService)
 	wordListController := controllers.NewWordListController(wordListService, wordBuilderService) // Pass wordBuilderService to the controller
+	dictionaryController := controllers.NewDictionaryController()
 
 	// Initialize Gin
 	r := gin.Default()
@@ -101,6 +102,7 @@ func main() {
 	// Register routes
 	wordBuilderController.RegisterRoutes(r)
 	wordListController.RegisterRoutes(r)
+	dictionaryController.RegisterRoutes(r)
 
 	// Start server
 	if err := r.Run(":8081"); err != nil {
