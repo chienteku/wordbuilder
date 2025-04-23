@@ -91,13 +91,14 @@ export const WordDetailsDisplay: React.FC<WordDetailsDisplayProps> = ({ word, de
                 )}
             </div>
 
-            {/* Add this new section to display the image */}
+            {/* Updated image container with fixed dimensions of 640x480 */}
             {details.imageUrl && (
-                <div className="mb-3">
+                <div className="mb-3 flex justify-center">
                     <img
                         src={details.imageUrl}
                         alt={`Image for ${word}`}
-                        className="w-full h-48 object-cover rounded-md mb-3"
+                        className="w-full max-w-md h-auto max-h-96 object-contain rounded-md mb-3"
+                        style={{ maxWidth: "640px", maxHeight: "480px" }}
                         onError={(e) => {
                             // Hide the image on error
                             e.currentTarget.style.display = 'none';
