@@ -81,10 +81,13 @@ func main() {
 	// Initialize services
 	wordBuilderService := services.NewWordBuilderService(dictionary)
 
+	// Initialize settings controller
+	settingsController := controllers.NewSettingsController(dataDir)
+
 	// Initialize controllers
 	wordBuilderController := controllers.NewWordBuilderController(wordBuilderService)
-	wordListController := controllers.NewWordListController(wordListService, wordBuilderService) // Pass wordBuilderService to the controller
-	dictionaryController := controllers.NewDictionaryController()
+	wordListController := controllers.NewWordListController(wordListService, wordBuilderService)
+	dictionaryController := controllers.NewDictionaryController(settingsController)
 
 	// Initialize Gin
 	r := gin.Default()
@@ -103,6 +106,7 @@ func main() {
 	wordBuilderController.RegisterRoutes(r)
 	wordListController.RegisterRoutes(r)
 	dictionaryController.RegisterRoutes(r)
+	settingsController.RegisterRoutes(r) // Register the settings routes
 
 	// Start server
 	if err := r.Run(":8081"); err != nil {

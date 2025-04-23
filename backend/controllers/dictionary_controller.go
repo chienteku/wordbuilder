@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -50,19 +49,13 @@ type WordDetails struct {
 
 // DictionaryController handles dictionary-related requests
 type DictionaryController struct {
-	PixabayAPIKey string
+	SettingsController *SettingsController
 }
 
 // NewDictionaryController creates a new dictionary controller
-func NewDictionaryController() *DictionaryController {
-	// Get API key from environment variable
-	apiKey := os.Getenv("PIXABAY_API_KEY")
-	if apiKey == "" {
-		fmt.Println("Warning: PIXABAY_API_KEY environment variable not set")
-	}
-
+func NewDictionaryController(settingsController *SettingsController) *DictionaryController {
 	return &DictionaryController{
-		PixabayAPIKey: apiKey,
+		SettingsController: settingsController,
 	}
 }
 
@@ -74,8 +67,15 @@ func (c *DictionaryController) GetWordImage(ctx *gin.Context) {
 		return
 	}
 
+	// Get API key from settings
+	apiKey := c.SettingsController.GetPixabayAPIKey()
+	if apiKey == "" {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Pixabay API key not configured"})
+		return
+	}
+
 	// Build Pixabay API URL
-	url := fmt.Sprintf("https://pixabay.com/api/?key=%s&q=%s&image_type=photo", c.PixabayAPIKey, word)
+	url := fmt.Sprintf("https://pixabay.com/api/?key=%s&q=%s&image_type=photo", apiKey, word)
 
 	// Make the request to Pixabay
 	resp, err := http.Get(url)
@@ -212,9 +212,10 @@ func (c *DictionaryController) GetCompleteWordDetails(ctx *gin.Context) {
 	}
 
 	// Get image from Pixabay
-	if c.PixabayAPIKey != "" {
+	apiKey := c.SettingsController.GetPixabayAPIKey()
+	if apiKey != "" {
 		// Build Pixabay API URL
-		imgUrl := fmt.Sprintf("https://pixabay.com/api/?key=%s&q=%s&image_type=photo", c.PixabayAPIKey, word)
+		imgUrl := fmt.Sprintf("https://pixabay.com/api/?key=%s&q=%s&image_type=photo", apiKey, word)
 
 		// Make the request to Pixabay
 		imgResp, err := http.Get(imgUrl)
