@@ -127,11 +127,11 @@ func (wb *EnhancedWordBuilder) UpdateSets() {
 			letterStr := string(letter)
 			// Check if this letter can start any words
 			if len(wb.Dictionary.FindWordsWithPrefix(letterStr)) > 0 {
-				wb.SuffixSet[letterStr] = true
+				wb.PrefixSet[letterStr] = true
 			}
 			// Check if this letter can end any words
 			if len(wb.Dictionary.FindWordsWithSuffix(letterStr)) > 0 {
-				wb.PrefixSet[letterStr] = true
+				wb.SuffixSet[letterStr] = true
 			}
 		}
 		return
