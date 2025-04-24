@@ -21,13 +21,18 @@ type WordBuilderState struct {
 	Suggestion       string
 }
 
+type TrieI interface {
+	GetNextLetters(prefix string) []string
+	KeysWithPrefix(prefix string) []string
+}
+
 // WordDictionary defines the methods required by the word builder logic.
 type WordDictionaryI interface {
 	ContainsWord(word string) bool
 	FindWordsWithPrefix(prefix string) []string
 	FindWordsWithSuffix(suffix string) []string
-	GetForwardTrie() *Trie
-	GetReverseTrie() *Trie
+	GetForwardTrie() TrieI
+	GetReverseTrie() TrieI
 	GetWordList() []string
 }
 
