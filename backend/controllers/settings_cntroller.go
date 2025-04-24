@@ -1,17 +1,16 @@
 package controllers
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
-	"path/filepath"
+	"wordbuilder/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 // SettingsController handles settings-related HTTP requests
 type SettingsController struct {
-	SettingsFilePath string
+	DBService *services.DatabaseService
 }
 
 // Settings represents the application settings
@@ -20,17 +19,9 @@ type Settings struct {
 }
 
 // NewSettingsController creates a new settings controller
-func NewSettingsController(dataDir string) *SettingsController {
-	// Ensure the settings file path exists
-	settingsDir := filepath.Join(dataDir, "settings")
-	if err := os.MkdirAll(settingsDir, 0755); err != nil {
-		// Log the error but continue - we'll handle file creation when saving
-		// In a production app, you might want to handle this more gracefully
-		println("Warning: Failed to create settings directory:", err.Error())
-	}
-
+func NewSettingsController(dataDir string, dbService *services.DatabaseService) *SettingsController {
 	return &SettingsController{
-		SettingsFilePath: filepath.Join(settingsDir, "settings.json"),
+		DBService: dbService,
 	}
 }
 
@@ -71,20 +62,10 @@ func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 func (c *SettingsController) loadSettings() (Settings, error) {
 	var settings Settings
 
-	// Check if the file exists
-	if _, err := os.Stat(c.SettingsFilePath); os.IsNotExist(err) {
-		return settings, err
-	}
-
-	// Read the file
-	data, err := os.ReadFile(c.SettingsFilePath)
-	if err != nil {
-		return settings, err
-	}
-
-	// Parse the JSON
-	if err := json.Unmarshal(data, &settings); err != nil {
-		return settings, err
+	// Get the Pixabay API key from database
+	pixabayKey, err := c.DBService.GetSetting("pixabay_api_key")
+	if err == nil {
+		settings.PixabayAPIKey = pixabayKey
 	}
 
 	return settings, nil
@@ -92,14 +73,8 @@ func (c *SettingsController) loadSettings() (Settings, error) {
 
 // saveSettings saves settings to the settings file
 func (c *SettingsController) saveSettings(settings Settings) error {
-	// Convert settings to JSON
-	data, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	// Write to file
-	return os.WriteFile(c.SettingsFilePath, data, 0644)
+	// Save Pixabay API key to database
+	return c.DBService.SaveSetting("pixabay_api_key", settings.PixabayAPIKey)
 }
 
 // GetPixabayAPIKey returns the Pixabay API key

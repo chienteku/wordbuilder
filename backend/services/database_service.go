@@ -48,7 +48,20 @@ func (s *DatabaseService) InitTables() error {
 		updated_at TIMESTAMP NOT NULL
 	);`
 
+	// New settings table
+	settingsTable := `
+		CREATE TABLE IF NOT EXISTS settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL,
+			updated_at TIMESTAMP NOT NULL
+		);`
+
 	_, err := s.DB.Exec(wordListTable)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.DB.Exec(settingsTable)
 	return err
 }
 
@@ -129,6 +142,46 @@ func (s *DatabaseService) UpdateWordList(list *models.WordList) error {
 // DeleteWordList removes a word list by ID
 func (s *DatabaseService) DeleteWordList(id int) error {
 	_, err := s.DB.Exec("DELETE FROM word_lists WHERE id = ?", id)
+	return err
+}
+
+// GetSetting retrieves a setting value by key
+func (s *DatabaseService) GetSetting(key string) (string, error) {
+	var value string
+	err := s.DB.QueryRow("SELECT value FROM settings WHERE key = ?", key).Scan(&value)
+	if err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
+// SaveSetting saves or updates a setting
+func (s *DatabaseService) SaveSetting(key, value string) error {
+	now := time.Now()
+
+	// Try to update first
+	result, err := s.DB.Exec(
+		"UPDATE settings SET value = ?, updated_at = ? WHERE key = ?",
+		value, now, key,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Check if any rows were affected
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	// If no rows were affected, insert a new record
+	if rowsAffected == 0 {
+		_, err = s.DB.Exec(
+			"INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)",
+			key, value, now,
+		)
+	}
+
 	return err
 }
 

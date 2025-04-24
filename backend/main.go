@@ -82,7 +82,7 @@ func main() {
 	wordBuilderService := services.NewWordBuilderService(dictionary)
 
 	// Initialize settings controller
-	settingsController := controllers.NewSettingsController(dataDir)
+	settingsController := controllers.NewSettingsController(dataDir, dbService)
 
 	// Initialize controllers
 	wordBuilderController := controllers.NewWordBuilderController(wordBuilderService)
