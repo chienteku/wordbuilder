@@ -56,3 +56,13 @@ func (d *WordDictionary) FindWordsWithSuffix(suffix string) []string {
 
 	return result
 }
+
+func (d *WordDictionary) GetForwardTrie() *Trie {
+	return d.ForwardTrie
+}
+func (d *WordDictionary) GetReverseTrie() *Trie {
+	return d.ReverseTrie
+}
+func (d *WordDictionary) GetWordList() []string {
+	return d.WordList
+}

@@ -10,176 +10,155 @@ import (
 	utils "wordbuilder/utils"
 )
 
-// EnhancedWordBuilder represents the word building game state
-type EnhancedWordBuilder struct {
-	Answer      string
-	PrefixSet   map[string]bool
-	SuffixSet   map[string]bool
-	Step        int
-	Dictionary  *WordDictionary
-	IsValidWord bool
-
-	// Enhanced features
-	ValidCompletions []string // Complete valid words that can be formed
-	Suggestion       string   // Suggested next move
+// WordBuilderState holds the state for the word builder game, without any dependencies or methods.
+type WordBuilderState struct {
+	Answer           string
+	PrefixSet        map[string]bool
+	SuffixSet        map[string]bool
+	Step             int
+	IsValidWord      bool
+	ValidCompletions []string
+	Suggestion       string
 }
 
-// NewEnhancedWordBuilder creates a new word builder instance
-func NewEnhancedWordBuilder(dictionary *WordDictionary) *EnhancedWordBuilder {
-	wb := &EnhancedWordBuilder{
-		Answer:           "",
-		PrefixSet:        make(map[string]bool),
-		SuffixSet:        make(map[string]bool),
-		Step:             0,
-		Dictionary:       dictionary,
-		IsValidWord:      false,
-		ValidCompletions: []string{},
-		Suggestion:       "",
-	}
-
-	wb.UpdateSets()
-	return wb
+// WordDictionary defines the methods required by the word builder logic.
+type WordDictionaryI interface {
+	ContainsWord(word string) bool
+	FindWordsWithPrefix(prefix string) []string
+	FindWordsWithSuffix(suffix string) []string
+	GetForwardTrie() *Trie
+	GetReverseTrie() *Trie
+	GetWordList() []string
 }
 
 // CheckValidWord verifies if the current answer is a valid word
-func (wb *EnhancedWordBuilder) CheckValidWord() bool {
-	isValid := len(wb.Answer) > 0 && wb.Dictionary.ContainsWord(wb.Answer)
-	wb.IsValidWord = isValid
-	return isValid
-}
-
-// Reset clears the current state
-func (wb *EnhancedWordBuilder) Reset() {
-	wb.Answer = ""
-	wb.Step = 0
-	wb.IsValidWord = false
-	wb.ValidCompletions = []string{}
-	wb.Suggestion = ""
-	wb.UpdateSets()
+func CheckValidWord(state WordBuilderState, dict WordDictionaryI) bool {
+	return len(state.Answer) > 0 && dict.ContainsWord(state.Answer)
 }
 
 // AddLetter adds a letter to either the prefix or suffix
-func (wb *EnhancedWordBuilder) AddLetter(letter, position string) (bool, string) {
+func AddLetter(state WordBuilderState, dict WordDictionaryI, letter, position string) (WordBuilderState, string, error) {
+	// Work with a copy of state
+	newState := state
 	letter = strings.ToLower(letter)
 
 	if position == "prefix" {
-		if !wb.PrefixSet[letter] {
-			return false, fmt.Sprintf("Invalid letter '%s' for prefix position.", letter)
+		if !state.PrefixSet[letter] {
+			return state, fmt.Sprintf("Invalid letter '%s' for prefix position.", letter), fmt.Errorf("invalid prefix letter")
 		}
-		wb.Answer = letter + wb.Answer
+		newState.Answer = letter + state.Answer
 	} else if position == "suffix" {
-		if !wb.SuffixSet[letter] {
-			return false, fmt.Sprintf("Invalid letter '%s' for suffix position.", letter)
+		if !state.SuffixSet[letter] {
+			return state, fmt.Sprintf("Invalid letter '%s' for suffix position.", letter), fmt.Errorf("invalid suffix letter")
 		}
-		wb.Answer = wb.Answer + letter
+		newState.Answer = state.Answer + letter
 	} else {
-		return false, "Invalid position. Use 'prefix' or 'suffix'."
+		return state, "Invalid position. Use 'prefix' or 'suffix'.", fmt.Errorf("invalid position")
 	}
 
-	wb.CheckValidWord()
-	wb.UpdateSets()
-	wb.Step++
+	// Call pure versions of CheckValidWord and UpdateSets
+	newState.IsValidWord = CheckValidWord(newState, dict)
+	newState = UpdateSets(newState, dict)
+	newState.Step++
 
-	message := fmt.Sprintf("Step %d: Added '%s' as %s -> Answer: %s", wb.Step, letter, position, wb.Answer)
-	if wb.IsValidWord {
-		message += fmt.Sprintf("\n*** '%s' is a valid word! ***", wb.Answer)
+	message := fmt.Sprintf("Step %d: Added '%s' as %s -> Answer: %s", newState.Step, letter, position, newState.Answer)
+	if newState.IsValidWord {
+		message += fmt.Sprintf("\n*** '%s' is a valid word! ***", newState.Answer)
 	}
 
 	// Add information about possible completions
-	if len(wb.ValidCompletions) > 0 && !wb.IsValidWord {
-		message += fmt.Sprintf("\nPossible completions: %s", strings.Join(wb.ValidCompletions[:min(3, len(wb.ValidCompletions))], ", "))
+	if len(newState.ValidCompletions) > 0 && !newState.IsValidWord {
+		message += fmt.Sprintf("\nPossible completions: %s", strings.Join(newState.ValidCompletions[:min(3, len(newState.ValidCompletions))], ", "))
 	}
 
-	return true, message
+	return newState, message, nil
 }
 
 // RemoveLetter removes a letter at the specified index
-func (wb *EnhancedWordBuilder) RemoveLetter(index int) (bool, string) {
-	if index < 0 || index >= len(wb.Answer) {
-		return false, fmt.Sprintf("Invalid index %d for answer '%s'.", index, wb.Answer)
+func RemoveLetter(state WordBuilderState, dict WordDictionaryI, index int) (WordBuilderState, string, error) {
+	if index < 0 || index >= len(state.Answer) {
+		return state, fmt.Sprintf("Invalid index %d for answer '%s'.", index, state.Answer), fmt.Errorf("invalid index")
 	}
 
-	letter := string(wb.Answer[index])
-	newAnswer := wb.Answer[:index] + wb.Answer[index+1:]
-	wb.Answer = newAnswer
+	newState := state
+	letter := string(state.Answer[index])
+	newState.Answer = state.Answer[:index] + state.Answer[index+1:]
 
-	wb.CheckValidWord()
-	wb.UpdateSets()
-	wb.Step++
+	newState.IsValidWord = CheckValidWord(newState, dict)
+	newState = UpdateSets(newState, dict)
+	newState.Step++
 
-	message := fmt.Sprintf("Step %d: Removed '%s' at index %d -> Answer: %s", wb.Step, letter, index, wb.Answer)
-	if wb.IsValidWord {
-		message += fmt.Sprintf("\n*** '%s' is a valid word! ***", wb.Answer)
+	message := fmt.Sprintf("Step %d: Removed '%s' at index %d -> Answer: %s", newState.Step, letter, index, newState.Answer)
+	if newState.IsValidWord {
+		message += fmt.Sprintf("\n*** '%s' is a valid word! ***", newState.Answer)
 	}
 
-	return true, message
+	return newState, message, nil
 }
 
 // UpdateSets updates the available prefix and suffix letter sets
-func (wb *EnhancedWordBuilder) UpdateSets() {
-	wb.PrefixSet = make(map[string]bool)
-	wb.SuffixSet = make(map[string]bool)
-	wb.ValidCompletions = []string{}
+func UpdateSets(state WordBuilderState, dict WordDictionaryI) WordBuilderState {
+	newState := state
+	newState.PrefixSet = make(map[string]bool)
+	newState.SuffixSet = make(map[string]bool)
+	newState.ValidCompletions = []string{}
 
 	// If no letters yet, provide all letters that can start or end words
-	if len(wb.Answer) == 0 {
+	if len(newState.Answer) == 0 {
 		for _, letter := range "abcdefghijklmnopqrstuvwxyz" {
 			letterStr := string(letter)
-			// Check if this letter can start any words
-			if len(wb.Dictionary.FindWordsWithPrefix(letterStr)) > 0 {
-				wb.PrefixSet[letterStr] = true
+			if len(dict.FindWordsWithPrefix(letterStr)) > 0 {
+				newState.PrefixSet[letterStr] = true
 			}
-			// Check if this letter can end any words
-			if len(wb.Dictionary.FindWordsWithSuffix(letterStr)) > 0 {
-				wb.SuffixSet[letterStr] = true
+			if len(dict.FindWordsWithSuffix(letterStr)) > 0 {
+				newState.SuffixSet[letterStr] = true
 			}
 		}
-		return
+		return newState
 	}
 
 	foundValidContinuation := false
 
 	// 1. Suffix letters from ForwardTrie
-	suffixLetters := wb.Dictionary.ForwardTrie.GetNextLetters(wb.Answer)
+	suffixLetters := dict.GetForwardTrie().GetNextLetters(newState.Answer)
 	for _, letter := range suffixLetters {
-		wb.SuffixSet[letter] = true
+		newState.SuffixSet[letter] = true
 		foundValidContinuation = true
 	}
-	// Optionally collect some completions
 	if len(suffixLetters) > 0 {
-		words := wb.Dictionary.FindWordsWithPrefix(wb.Answer)
+		words := dict.FindWordsWithPrefix(newState.Answer)
 		for i, word := range words {
-			if i >= 5 { // Limit to reduce overhead
+			if i >= 5 {
 				break
 			}
-			if len(word) > len(wb.Answer) {
-				wb.ValidCompletions = append(wb.ValidCompletions, word)
+			if len(word) > len(newState.Answer) {
+				newState.ValidCompletions = append(newState.ValidCompletions, word)
 			}
 		}
 	}
 
 	// 2. Prefix letters from ReverseTrie
-	reversedAnswer := utils.ReverseString(wb.Answer)
-	prefixLetters := wb.Dictionary.ReverseTrie.GetNextLetters(reversedAnswer)
+	// Assuming you have a ReverseString utility function
+	reversedAnswer := utils.ReverseString(newState.Answer)
+	prefixLetters := dict.GetReverseTrie().GetNextLetters(reversedAnswer)
 	for _, letter := range prefixLetters {
-		wb.PrefixSet[letter] = true
+		newState.PrefixSet[letter] = true
 		foundValidContinuation = true
 	}
-	// Optionally collect some completions
 	if len(prefixLetters) > 0 {
-		revWords := wb.Dictionary.ReverseTrie.KeysWithPrefix(reversedAnswer)
+		revWords := dict.GetReverseTrie().KeysWithPrefix(reversedAnswer)
 		for i, revWord := range revWords {
-			if i >= 5 { // Limit to reduce overhead
+			if i >= 5 {
 				break
 			}
 			if len(revWord) > len(reversedAnswer) {
-				wb.ValidCompletions = append(wb.ValidCompletions, utils.ReverseString(revWord))
+				newState.ValidCompletions = append(newState.ValidCompletions, utils.ReverseString(revWord))
 			}
 		}
 	}
 
 	// 3. Embedded check with parallelism
-	wordList := wb.Dictionary.WordList
+	wordList := dict.GetWordList()
 	numParts := runtime.NumCPU()
 	partSize := (len(wordList) + numParts - 1) / numParts
 	var wg sync.WaitGroup
@@ -201,13 +180,13 @@ func (wb *EnhancedWordBuilder) UpdateSets() {
 			localPrefix := make(map[string]bool)
 			localSuffix := make(map[string]bool)
 			for _, word := range words {
-				idx := strings.Index(word, wb.Answer)
+				idx := strings.Index(word, newState.Answer)
 				if idx >= 0 {
 					foundValidContinuation = true
 					if idx > 0 {
 						localPrefix[string(word[idx-1])] = true
 					}
-					embedEndIdx := idx + len(wb.Answer)
+					embedEndIdx := idx + len(newState.Answer)
 					if embedEndIdx < len(word) {
 						localSuffix[string(word[embedEndIdx])] = true
 					}
@@ -225,62 +204,61 @@ func (wb *EnhancedWordBuilder) UpdateSets() {
 
 	for res := range results {
 		for letter := range res.prefixSet {
-			wb.PrefixSet[letter] = true
+			newState.PrefixSet[letter] = true
 		}
 		for letter := range res.suffixSet {
-			wb.SuffixSet[letter] = true
+			newState.SuffixSet[letter] = true
 		}
 	}
 
 	// Generate suggestion (simplified)
-	if len(wb.ValidCompletions) > 0 && !wb.IsValidWord {
-		sort.Slice(wb.ValidCompletions, func(i, j int) bool {
-			return len(wb.ValidCompletions[i]) < len(wb.ValidCompletions[j])
+	if len(newState.ValidCompletions) > 0 && !newState.IsValidWord {
+		sort.Slice(newState.ValidCompletions, func(i, j int) bool {
+			return len(newState.ValidCompletions[i]) < len(newState.ValidCompletions[j])
 		})
-		shortest := wb.ValidCompletions[0]
-		if strings.HasPrefix(shortest, wb.Answer) && len(shortest) > len(wb.Answer) {
-			wb.Suggestion = "Try adding '" + string(shortest[len(wb.Answer)]) + "' as suffix"
-		} else if idx := strings.Index(shortest, wb.Answer); idx > 0 {
-			wb.Suggestion = "Try adding '" + string(shortest[idx-1]) + "' as prefix"
+		shortest := newState.ValidCompletions[0]
+		if strings.HasPrefix(shortest, newState.Answer) && len(shortest) > len(newState.Answer) {
+			newState.Suggestion = "Try adding '" + string(shortest[len(newState.Answer)]) + "' as suffix"
+		} else if idx := strings.Index(shortest, newState.Answer); idx > 0 {
+			newState.Suggestion = "Try adding '" + string(shortest[idx-1]) + "' as prefix"
 		}
 	}
 
 	// When a valid word or we have nowhere to go
-	if wb.IsValidWord || !foundValidContinuation {
-		// If we found no valid continuations, we're at a dead end
-		// DO NOT add fallback letters - leave the sets empty
-		wb.Suggestion = "This isn't a valid prefix or suffix of any word. Try removing some letters."
+	if newState.IsValidWord || !foundValidContinuation {
+		newState.Suggestion = "This isn't a valid prefix or suffix of any word. Try removing some letters."
 	}
 
+	return newState
 }
 
 // GetCurrentState returns the current state as a map
-func (wb *EnhancedWordBuilder) GetCurrentState() map[string]interface{} {
-	prefixSet := make([]string, 0, len(wb.PrefixSet))
-	for letter := range wb.PrefixSet {
+func GetCurrentState(state WordBuilderState) map[string]interface{} {
+	prefixSet := make([]string, 0, len(state.PrefixSet))
+	for letter := range state.PrefixSet {
 		prefixSet = append(prefixSet, letter)
 	}
 
-	suffixSet := make([]string, 0, len(wb.SuffixSet))
-	for letter := range wb.SuffixSet {
+	suffixSet := make([]string, 0, len(state.SuffixSet))
+	for letter := range state.SuffixSet {
 		suffixSet = append(suffixSet, letter)
 	}
 
 	// Only return a few completions to avoid overwhelming the UI
 	var displayCompletions []string
-	if len(wb.ValidCompletions) > 5 {
-		displayCompletions = wb.ValidCompletions[:5]
+	if len(state.ValidCompletions) > 5 {
+		displayCompletions = state.ValidCompletions[:5]
 	} else {
-		displayCompletions = wb.ValidCompletions
+		displayCompletions = state.ValidCompletions
 	}
 
 	return map[string]interface{}{
-		"answer":            wb.Answer,
+		"answer":            state.Answer,
 		"prefix_set":        prefixSet,
 		"suffix_set":        suffixSet,
-		"step":              wb.Step,
-		"is_valid_word":     wb.IsValidWord,
+		"step":              state.Step,
+		"is_valid_word":     state.IsValidWord,
 		"valid_completions": displayCompletions,
-		"suggestion":        wb.Suggestion,
+		"suggestion":        state.Suggestion,
 	}
 }

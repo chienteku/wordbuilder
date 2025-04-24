@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strings"
+	models "wordbuilder/models"
 	"wordbuilder/services"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +30,7 @@ func (c *WordBuilderController) InitSession(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"session_id": sessionID,
-		"state":      builder.GetCurrentState(),
+		"state":      models.GetCurrentState(*builder), // builder IS the state!
 		"success":    true,
 	})
 }
@@ -52,12 +53,12 @@ func (c *WordBuilderController) ResetSession(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"state":   builder.GetCurrentState(),
+		"state":   models.GetCurrentState(*builder),
 		"message": "Word builder has been reset.",
 	})
 }
 
-// AddLetter adds a letter to the word
+// models.AddLetter adds a letter to the word
 func (c *WordBuilderController) AddLetter(ctx *gin.Context) {
 	var req struct {
 		SessionID string `json:"session_id"`
@@ -69,7 +70,7 @@ func (c *WordBuilderController) AddLetter(ctx *gin.Context) {
 		return
 	}
 
-	builder, exists := c.WordBuilderService.GetSession(req.SessionID)
+	state, exists := c.WordBuilderService.GetSession(req.SessionID)
 	if !exists {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
 		return
@@ -84,15 +85,19 @@ func (c *WordBuilderController) AddLetter(ctx *gin.Context) {
 		return
 	}
 
-	success, message := builder.AddLetter(strings.ToLower(req.Letter), req.Position)
-	if !success {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": message})
+	// Use the main dictionary from the service, not from the state
+	newState, message, err := models.AddLetter(*state, c.WordBuilderService.Dictionary, strings.ToLower(req.Letter), req.Position)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Update the session with the new state
+	c.WordBuilderService.Sessions[req.SessionID] = &newState
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"state":   builder.GetCurrentState(),
+		"state":   models.GetCurrentState(newState),
 		"message": message,
 	})
 }
@@ -108,21 +113,24 @@ func (c *WordBuilderController) RemoveLetter(ctx *gin.Context) {
 		return
 	}
 
-	builder, exists := c.WordBuilderService.GetSession(req.SessionID)
+	state, exists := c.WordBuilderService.GetSession(req.SessionID)
 	if !exists {
 		ctx.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
 		return
 	}
 
-	success, message := builder.RemoveLetter(req.Index)
-	if !success {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": message})
+	newState, message, err := models.RemoveLetter(*state, c.WordBuilderService.Dictionary, req.Index)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Update the session with the new state
+	c.WordBuilderService.Sessions[req.SessionID] = &newState
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"state":   builder.GetCurrentState(),
+		"state":   models.GetCurrentState(newState),
 		"message": message,
 	})
 }
@@ -136,8 +144,18 @@ func (c *WordBuilderController) GetState(ctx *gin.Context) {
 		return
 	}
 
+	state := models.WordBuilderState{
+		Answer:           builder.Answer,
+		PrefixSet:        builder.PrefixSet,
+		SuffixSet:        builder.SuffixSet,
+		Step:             builder.Step,
+		IsValidWord:      builder.IsValidWord,
+		ValidCompletions: builder.ValidCompletions,
+		Suggestion:       builder.Suggestion,
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
-		"state": builder.GetCurrentState(),
+		"state": models.GetCurrentState(state),
 	})
 }
 

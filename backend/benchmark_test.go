@@ -25,7 +25,16 @@ func BenchmarkInitialWordBuilderState(b *testing.B) {
 
 	b.ResetTimer() // Ignore setup time
 	for i := 0; i < b.N; i++ {
-		NewEnhancedWordBuilder(dictionary)
+		state := WordBuilderState{
+			Answer:           "",
+			PrefixSet:        make(map[string]bool),
+			SuffixSet:        make(map[string]bool),
+			Step:             0,
+			IsValidWord:      false,
+			ValidCompletions: []string{},
+			Suggestion:       "",
+		}
+		_ = UpdateSets(state, dictionary)
 	}
 }
 
