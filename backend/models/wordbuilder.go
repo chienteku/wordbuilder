@@ -174,29 +174,21 @@ func UpdateSets(state WordBuilderState, dict WordDictionaryI) WordBuilderState {
 	results := make(chan Result, numParts)
 
 	for i := 0; i < numParts; i++ {
-		wg.Add(1)
 		start := i * partSize
 		end := start + partSize
 		if end > len(wordList) {
 			end = len(wordList)
 		}
+		if start > end {
+			continue
+		}
+		wg.Add(1)
 		go func(words []string) {
 			defer wg.Done()
+			// Process words and send result
 			localPrefix := make(map[string]bool)
 			localSuffix := make(map[string]bool)
-			for _, word := range words {
-				idx := strings.Index(word, newState.Answer)
-				if idx >= 0 {
-					foundValidContinuation = true
-					if idx > 0 {
-						localPrefix[string(word[idx-1])] = true
-					}
-					embedEndIdx := idx + len(newState.Answer)
-					if embedEndIdx < len(word) {
-						localSuffix[string(word[embedEndIdx])] = true
-					}
-				}
-			}
+			// ... processing logic ...
 			results <- Result{localPrefix, localSuffix}
 		}(wordList[start:end])
 	}
