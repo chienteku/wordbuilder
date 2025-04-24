@@ -6,8 +6,20 @@ import (
 	"io"
 	"net/http"
 
+	lru "github.com/hashicorp/golang-lru"
+
 	"github.com/gin-gonic/gin"
 )
+
+var wordDetailsCache *lru.Cache
+
+func init() {
+	cache, err := lru.New(500) // 500 is the cache size
+	if err != nil {
+		panic(err)
+	}
+	wordDetailsCache = cache
+}
 
 // PixabayResponse represents the Pixabay API response structure
 type PixabayResponse struct {
@@ -114,8 +126,8 @@ func (c *DictionaryController) GetWordImage(ctx *gin.Context) {
 // GetWordDetails fetches word details from the Dictionary API
 func (c *DictionaryController) GetWordDetails(ctx *gin.Context) {
 	word := ctx.Param("word")
-	if word == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Word parameter is required"})
+	if value, ok := wordDetailsCache.Get(word); ok {
+		ctx.JSON(http.StatusOK, value)
 		return
 	}
 
@@ -151,7 +163,13 @@ func (c *DictionaryController) GetWordDetails(ctx *gin.Context) {
 	}
 
 	// Extract the details we need
-	details := WordDetails{}
+	details := WordDetails{
+		Pronunciation: "...",
+		Audio:         "...",
+		Meaning:       "...",
+		Example:       "...",
+		ImageUrl:      "...",
+	}
 
 	// Check if we got valid data
 	if len(dictResp) > 0 {
@@ -168,6 +186,7 @@ func (c *DictionaryController) GetWordDetails(ctx *gin.Context) {
 		}
 	}
 
+	wordDetailsCache.Add(word, details)
 	// Return the word details
 	ctx.JSON(http.StatusOK, details)
 }
