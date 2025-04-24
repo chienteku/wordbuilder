@@ -203,6 +203,13 @@ func (c *WordListController) UpdateWordList(ctx *gin.Context) {
 		return
 	}
 
+	// Integrate WordListManager: reload in-memory word list
+	if wordList.FilePath != "" {
+		if err := services.GetWordListManager().LoadFromFile(wordList.FilePath); err != nil {
+			fmt.Printf("Warning: failed to reload in-memory word list: %v\n", err)
+		}
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"message":   "Word list updated successfully",
 		"word_list": wordList,

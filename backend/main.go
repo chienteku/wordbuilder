@@ -15,14 +15,15 @@ import (
 
 func main() {
 	// Create necessary directories
-	dataDir := "data"
-	uploadsDir := filepath.Join(dataDir, "uploads")
-
-	if err := os.MkdirAll(uploadsDir, 0755); err != nil {
-		log.Fatalf("Failed to create data directories: %v", err)
+	wordListPath := filepath.Join("data", "words.txt") // Adjust as needed
+	manager := services.GetWordListManager()
+	if err := manager.LoadFromFile(wordListPath); err != nil {
+		log.Fatalf("Failed to load word list: %v", err)
 	}
 
 	// Initialize database service
+	dataDir := "data"
+	uploadsDir := filepath.Join(dataDir, "uploads")
 	dbPath := filepath.Join(dataDir, "wordbuilder.db")
 	dbService, err := services.NewDatabaseService(dbPath)
 	if err != nil {
