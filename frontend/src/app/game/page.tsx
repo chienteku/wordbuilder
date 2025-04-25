@@ -90,9 +90,6 @@ const GamePage = () => {
     }
   };
 
-  // Calculate min height to keep layout stable
-  const detailsMinHeight = '150px';
-
   return (
     <div className="min-h-screen bg-gray-100 p-4 flex flex-col items-center">
       <div className="w-full max-w-lg">
@@ -124,23 +121,6 @@ const GamePage = () => {
               onReset={resetWordBuilder}
               onRemoveLetter={removeLetter}
             />
-
-            {/* Word Details with fixed min-height */}
-            <div style={{ minHeight: detailsMinHeight }} className="transition-all duration-300 bg-white px-4 pb-4">
-              {state.is_valid_word && state.answer.length > 1 && wordDetails && (
-                <WordDetailsDisplay
-                  word={state.answer}
-                  details={wordDetails}
-                />
-              )}
-              {state.valid_completions && state.valid_completions.length > 0 && (
-                <SuggestedCompletions
-                  completions={state.valid_completions}
-                  suggestion={state.suggestion}
-                />
-              )}
-            </div>
-
             {/* Letter Sets - Split into Left/Right */}
             <div className="flex bg-white rounded-b-lg border-t border-gray-200 shadow p-4">
               <div className="w-1/2">
@@ -159,6 +139,24 @@ const GamePage = () => {
                   onAddLetter={addLetter}
                 />
               </div>
+            </div>
+
+            {/* Word Details with fixed min-height */}
+            <div
+              className="transition-all duration-300 bg-white px-4 pb-4 min-h-[600px] max-h-[600px] overflow-y-auto flex flex-col justify-start"
+            >
+              {state.is_valid_word && state.answer.length > 1 && wordDetails && (
+                <WordDetailsDisplay
+                  word={state.answer}
+                  details={wordDetails}
+                />
+              )}
+              {state.valid_completions && state.valid_completions.length > 0 && (
+                <SuggestedCompletions
+                  completions={state.valid_completions}
+                  suggestion={state.suggestion}
+                />
+              )}
             </div>
 
             {/* Mobile Layout Info */}
