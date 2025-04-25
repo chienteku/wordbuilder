@@ -11,7 +11,8 @@ import {
   WordDetailsDisplay,
   SuggestedCompletions
 } from '@/components/game/WordDisplay';
-import { WordList } from '@/types/wordlist';
+
+const ALL_LETTERS = [...'abcdefghijklmnopqrstuvwxyz'];
 
 const GamePage = () => {
   const {
@@ -145,14 +146,16 @@ const GamePage = () => {
               <div className="w-1/2">
                 <LetterSet
                   position="prefix"
-                  letters={state.prefix_set}
+                  allLetters={ALL_LETTERS}
+                  enabledLetters={state.prefix_set}
                   onAddLetter={addLetter}
                 />
               </div>
               <div className="w-1/2">
                 <LetterSet
                   position="suffix"
-                  letters={state.suffix_set}
+                  allLetters={ALL_LETTERS}
+                  enabledLetters={state.suffix_set}
                   onAddLetter={addLetter}
                 />
               </div>
