@@ -67,6 +67,7 @@ func (s *WordBuilderService) ResetSession(sessionID string) (*models.WordBuilder
 	}
 
 	state = models.UpdateSets(state, s.Dictionary)
+	s.Sessions[sessionID] = &state
 	return &state, true
 }
 
