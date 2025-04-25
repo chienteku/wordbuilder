@@ -11,6 +11,7 @@ import {
   WordDetailsDisplay,
   SuggestedCompletions
 } from '@/components/game/WordDisplay';
+import { WordList } from '@/types/wordlist';
 
 const GamePage = () => {
   const {
@@ -25,6 +26,33 @@ const GamePage = () => {
 
   const [activeWordListId, setActiveWordListId] = useState<number | null>(null);
   const [changeMessage, setChangeMessage] = useState<string | null>(null);
+
+    // Fetch word lists and validate activeWordListId on mount
+    useEffect(() => {
+      async function validateWordList() {
+        const listsResponse = await wordListService.getAllWordLists();
+        const availableLists = listsResponse.word_lists || [];
+  
+        const storedWordListId = localStorage.getItem('activeWordListId');
+        let wordListId = storedWordListId ? parseInt(storedWordListId, 10) : null;
+  
+        // If no word list selected or it was deleted, pick the first available
+        if (!wordListId || !availableLists.some(wl => wl.id === wordListId)) {
+          if (availableLists.length > 0) {
+            wordListId = availableLists[0].id;
+            setActiveWordListId(wordListId);
+            localStorage.setItem('activeWordListId', wordListId.toString());
+            await handleSelectWordList(wordListId); // This resets the builder
+          }
+        } else {
+          setActiveWordListId(wordListId);
+          // Always reset the builder to sync with the word list
+          resetWordBuilder();
+        }
+      }
+      validateWordList();
+      // eslint-disable-next-line
+    }, []);
 
   // Load active word list ID from localStorage on component mount
   useEffect(() => {
