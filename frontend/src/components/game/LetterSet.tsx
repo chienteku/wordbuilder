@@ -19,18 +19,21 @@ export const LetterButtons: React.FC<LetterButtonsProps> = ({
     if (allLetters.length === 0) {
         return <p className="text-sm text-gray-500">No {type} available</p>;
     }
-    
+
     return (
         <div className="flex flex-wrap gap-1 justify-center">
             {allLetters.map((letter) => {
                 const enabled = enabledLetters.includes(letter);
+                const baseColor = position === 'prefix' ? 'bg-blue-500' : 'bg-green-500';
+                const hoverColor = position === 'prefix' ? 'hover:bg-blue-600' : 'hover:bg-green-600';
+
                 return (
                     <motion.button
                         key={`${type}-${letter}`}
                         onClick={() => enabled && onAddLetter(letter, position)}
                         className={`w-9 h-9 flex items-center justify-center rounded-full text-white text-lg font-medium
-                ${position === 'prefix' ? 'bg-blue-500' : 'bg-green-500'}
-                ${enabled ? 'hover:bg-blue-600 cursor-pointer' : 'opacity-40 cursor-default pointer-events-none'}
+                ${baseColor}
+                ${enabled ? `${hoverColor} cursor-pointer` : 'opacity-40 cursor-default pointer-events-none'}
               `}
                         style={{
                             opacity: enabled ? 1 : 0.3,
