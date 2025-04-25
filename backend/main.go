@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 	"path/filepath"
 
 	"github.com/gin-contrib/cors"
@@ -14,13 +13,6 @@ import (
 )
 
 func main() {
-	// Create necessary directories
-	wordListPath := filepath.Join("data", "words.txt") // Adjust as needed
-	manager := services.GetWordListManager()
-	if err := manager.LoadFromFile(wordListPath); err != nil {
-		log.Fatalf("Failed to load word list: %v", err)
-	}
-
 	// Initialize database service
 	dataDir := "data"
 	uploadsDir := filepath.Join(dataDir, "uploads")
@@ -51,31 +43,6 @@ func main() {
 		} else {
 			log.Printf("Loaded dictionary from word list '%s' with %d words\n",
 				wordLists[0].Name, len(dictionary.WordList))
-		}
-	}
-
-	// Fall back to default dictionary if needed
-	if dictionary == nil {
-		defaultWordListPath := "words.txt"
-		wordList, err := dictService.LoadWordList(defaultWordListPath)
-		if err != nil {
-			log.Fatalf("Failed to load default word list: %v", err)
-		}
-		dictionary = dictService.CreateDictionary(wordList)
-		log.Printf("Loaded %d words from default dictionary\n", len(dictionary.WordList))
-
-		// Save the default dictionary as a word list if we have none
-		if len(wordLists) == 0 {
-			// Copy the default word list to the uploads directory
-			defaultData, err := os.ReadFile(defaultWordListPath)
-			if err == nil {
-				wordListService.CreateWordList(
-					defaultData,
-					"Default Word List",
-					"System default word list loaded at startup",
-					"system",
-				)
-			}
 		}
 	}
 
