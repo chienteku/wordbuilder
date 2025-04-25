@@ -27,32 +27,32 @@ const GamePage = () => {
   const [activeWordListId, setActiveWordListId] = useState<number | null>(null);
   const [changeMessage, setChangeMessage] = useState<string | null>(null);
 
-    // Fetch word lists and validate activeWordListId on mount
-    useEffect(() => {
-      async function validateWordList() {
-        const listsResponse = await wordListService.getAllWordLists();
-        const availableLists = listsResponse.word_lists || [];
-  
-        const storedWordListId = localStorage.getItem('activeWordListId');
-        let wordListId = storedWordListId ? parseInt(storedWordListId, 10) : null;
-  
-        // If no word list selected or it was deleted, pick the first available
-        if (!wordListId || !availableLists.some(wl => wl.id === wordListId)) {
-          if (availableLists.length > 0) {
-            wordListId = availableLists[0].id;
-            setActiveWordListId(wordListId);
-            localStorage.setItem('activeWordListId', wordListId.toString());
-            await handleSelectWordList(wordListId); // This resets the builder
-          }
-        } else {
+  // Fetch word lists and validate activeWordListId on mount
+  useEffect(() => {
+    async function validateWordList() {
+      const listsResponse = await wordListService.getAllWordLists();
+      const availableLists = listsResponse.word_lists || [];
+
+      const storedWordListId = localStorage.getItem('activeWordListId');
+      let wordListId = storedWordListId ? parseInt(storedWordListId, 10) : null;
+
+      // If no word list selected or it was deleted, pick the first available
+      if (!wordListId || !availableLists.some(wl => wl.id === wordListId)) {
+        if (availableLists.length > 0) {
+          wordListId = availableLists[0].id;
           setActiveWordListId(wordListId);
-          // Always reset the builder to sync with the word list
-          resetWordBuilder();
+          localStorage.setItem('activeWordListId', wordListId.toString());
+          await handleSelectWordList(wordListId); // This resets the builder
         }
+      } else {
+        setActiveWordListId(wordListId);
+        // Always reset the builder to sync with the word list
+        resetWordBuilder();
       }
-      validateWordList();
-      // eslint-disable-next-line
-    }, []);
+    }
+    validateWordList();
+    // eslint-disable-next-line
+  }, []);
 
   // Load active word list ID from localStorage on component mount
   useEffect(() => {
@@ -70,7 +70,7 @@ const GamePage = () => {
     try {
       await wordListService.useWordList(wordListId);
       setActiveWordListId(wordListId);
-      
+
       // Save to localStorage
       localStorage.setItem('activeWordListId', wordListId.toString());
 
@@ -126,17 +126,18 @@ const GamePage = () => {
 
             {/* Word Details with fixed min-height */}
             <div style={{ minHeight: detailsMinHeight }} className="transition-all duration-300 bg-white px-4 pb-4">
-              {state.is_valid_word && state.answer.length > 1 && wordDetails ? (
+              {state.is_valid_word && state.answer.length > 1 && wordDetails && (
                 <WordDetailsDisplay
                   word={state.answer}
                   details={wordDetails}
                 />
-              ) : !state.is_valid_word && state.valid_completions && state.valid_completions.length > 0 ? (
+              )}
+              {state.valid_completions && state.valid_completions.length > 0 && (
                 <SuggestedCompletions
                   completions={state.valid_completions}
                   suggestion={state.suggestion}
                 />
-              ) : null}
+              )}
             </div>
 
             {/* Letter Sets - Split into Left/Right */}
