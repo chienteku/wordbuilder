@@ -1,10 +1,10 @@
+"use client"
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { wordListService } from '@/services/wordlist-service';
 
 type WordList = {
   id: number;
   name: string;
-  // ...other fields as needed
 };
 
 type WordListContextType = {
@@ -17,6 +17,8 @@ type WordListContextType = {
 const WordListContext = createContext<WordListContextType | undefined>(undefined);
 
 export const WordListProvider = ({ children }: { children: ReactNode }) => {
+  console.log("WordListProvider mounted");
+
   const [wordLists, setWordLists] = useState<WordList[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

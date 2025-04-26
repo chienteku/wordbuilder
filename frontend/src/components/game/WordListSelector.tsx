@@ -1,6 +1,4 @@
 import { useState } from 'react';
-// import { WordList } from '@/types/wordlist';
-// import { wordListService } from '@/services/wordlist-service';
 import { useWordListContext } from '@/contexts/WordListContext';
 
 interface WordListSelectorProps {
@@ -12,29 +10,8 @@ export const WordListSelector: React.FC<WordListSelectorProps> = ({
     activeWordListId,
     onSelectWordList
 }) => {
-    // const [wordLists, setWordLists] = useState<WordList[]>([]);
-    // const [loading, setLoading] = useState(true);
-    // const [error, setError] = useState<string | null>(null);
     const [isChanging, setIsChanging] = useState(false);
     const { wordLists, loading, error } = useWordListContext();
-
-    // useEffect(() => {
-    //     fetchWordLists();
-    // }, []);
-
-    // const fetchWordLists = async () => {
-    //     try {
-    //         setLoading(true);
-    //         const response = await wordListService.getAllWordLists();
-    //         setWordLists(response.word_lists || []);
-    //         setError(null);
-    //     } catch (err: any) {
-    //         setError('Failed to load word lists');
-    //         console.error(err);
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
 
     const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
         const wordListId = parseInt(e.target.value, 10);
