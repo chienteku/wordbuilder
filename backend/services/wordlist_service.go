@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"wordbuilder/models"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
 // WordListService handles operations for word lists
@@ -17,6 +19,7 @@ type WordListService struct {
 	DBService         *DatabaseService
 	DictionaryService *DictionaryService
 	UploadDir         string
+	dictCache         *lru.Cache
 }
 
 // NewWordListService creates a new word list service
@@ -26,10 +29,18 @@ func NewWordListService(dbService *DatabaseService, dictService *DictionaryServi
 		panic(fmt.Sprintf("Failed to create upload directory: %v", err))
 	}
 
+	// Initialize LRU cache
+	cache, err := lru.New(100) // Adjust size as needed
+
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create LRU cache: %v", err))
+	}
+
 	return &WordListService{
 		DBService:         dbService,
 		DictionaryService: dictService,
 		UploadDir:         uploadDir,
+		dictCache:         cache,
 	}
 }
 
@@ -127,6 +138,9 @@ func (s *WordListService) UpdateWordList(id int, name, description, source strin
 		return nil, fmt.Errorf("failed to update word list: %w", err)
 	}
 
+	// Clear cache
+	s.dictCache.Remove(wordList.ID)
+
 	return wordList, nil
 }
 
@@ -149,6 +163,9 @@ func (s *WordListService) DeleteWordList(id int) error {
 	if err := s.DBService.DeleteWordList(id); err != nil {
 		return fmt.Errorf("failed to delete word list metadata: %w", err)
 	}
+
+	// Clear cache
+	s.dictCache.Remove(id)
 
 	return nil
 }
@@ -189,6 +206,12 @@ func (s *WordListService) countWordsInFile(filePath string) (int, error) {
 
 // LoadWordListIntoDictionary loads a word list into a dictionary
 func (s *WordListService) LoadWordListIntoDictionary(wordListID int) (*models.WordDictionary, error) {
+
+	// Check cache first
+	if cached, ok := s.dictCache.Get(wordListID); ok {
+		return cached.(*models.WordDictionary), nil
+	}
+
 	// Get the word list
 	wordList, err := s.DBService.GetWordList(wordListID)
 	if err != nil {
@@ -203,6 +226,10 @@ func (s *WordListService) LoadWordListIntoDictionary(wordListID int) (*models.Wo
 
 	// Create dictionary
 	dictionary := s.DictionaryService.CreateDictionary(words)
+
+	// Add to cache
+	s.dictCache.Add(wordListID, dictionary)
+
 	return dictionary, nil
 }
 
