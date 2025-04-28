@@ -8,7 +8,6 @@ export const useWordBuilder = () => {
     const [error, setError] = useState<string | null>(null);
     const [wordDetails, setWordDetails] = useState<WordDetails | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
-    const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
     // Initialize WordBuilder
     const initializeWordBuilder = async () => {
@@ -80,6 +79,7 @@ export const useWordBuilder = () => {
                 localStorage.removeItem('sessionId');
                 setSessionId(null);
                 setState(null);
+                initializeWordBuilder();
             }
         } finally {
             setLoading(false);
@@ -88,33 +88,9 @@ export const useWordBuilder = () => {
 
     // Reset WordBuilder
     const resetWordBuilder = async () => {
-        if (!sessionId) {
-            // If no session, create a new one
-            initializeWordBuilder();
-            return;
-        }
-
-        try {
-            setLoading(true);
-            const response = await wordBuilderService.resetSession(sessionId);
-            if (response.success) {
-                setState(response.state);
-                setWordDetails(null);
-                setError(null);
-            } else {
-                setError(response.message || 'Failed to reset word builder.');
-            }
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to reset word builder.');
-            if (err.response?.status === 404) {
-                localStorage.removeItem('sessionId');
-                setSessionId(null);
-                setState(null);
-                initializeWordBuilder();
-            }
-        } finally {
-            setLoading(false);
-        }
+        // Always initialize a new session on reset
+        initializeWordBuilder();
+        setWordDetails(null);
     };
 
     // Fetch word details from dictionary API
@@ -127,32 +103,10 @@ export const useWordBuilder = () => {
         }
     };
 
-    // Restore state from localStorage or initialize new session
-    useEffect(() => {
-        const savedSessionId = localStorage.getItem('sessionId');
-        if (savedSessionId && !sessionId) {
-            wordBuilderService.getState(savedSessionId)
-                .then((response) => {
-                    setSessionId(savedSessionId);
-                    setState(response.state);
-
-                    // If the word is valid, fetch its details
-                    if (response.state.is_valid_word && response.state.answer.length > 1) {
-                        fetchWordDetails(response.state.answer);
-                    }
-                })
-                .catch(() => {
-                    localStorage.removeItem('sessionId');
-                    initializeWordBuilder();
-                });
-        } else if (!sessionId) {
-            initializeWordBuilder();
-        }
-    }, [sessionId]);
-
-    // Update the useEffect to track initialization
+    // Initialize session on component mount
     useEffect(() => {
         const initSession = async () => {
+            setLoading(true);
             const savedSessionId = localStorage.getItem('sessionId');
             if (savedSessionId) {
                 try {
@@ -164,30 +118,21 @@ export const useWordBuilder = () => {
                     if (response.state.is_valid_word && response.state.answer.length > 1) {
                         fetchWordDetails(response.state.answer);
                     }
-                    setIsInitialized(true);
                 } catch (err) {
                     console.error("Failed to restore session:", err);
+                    // If restore fails, remove invalid session ID and create a new one
                     localStorage.removeItem('sessionId');
-                    await createNewSession();
+                    await initializeWordBuilder();
                 }
             } else {
-                await createNewSession();
-            }
-        };
-
-        const createNewSession = async () => {
-            try {
+                // If no saved session ID, create a new one
                 await initializeWordBuilder();
-                setIsInitialized(true);
-            } catch (err) {
-                console.error("Failed to create new session:", err);
             }
+            setLoading(false);
         };
 
-        if (!isInitialized) {
-            initSession();
-        }
-    }, [isInitialized]);
+        initSession();
+    }, []); // Empty dependency array ensures this effect runs only once on mount
 
     return {
         state,
