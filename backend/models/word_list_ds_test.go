@@ -2,6 +2,7 @@ package models
 
 import (
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -24,18 +25,18 @@ func TestNewWordListDS(t *testing.T) {
 
 // TestGetGroups_EmptyQuery tests GetGroups with an empty query string.
 func TestGetGroups_EmptyQuery(t *testing.T) {
-	words := []string{"elephant", "envelope", "pen", "penguin", "people", "person", "personal", "prepositions", "repeat", "sheep", "sleep", "zoo"}
+	words := []string{"elephant", "envelope", "fox", "pen", "penguin", "people", "person", "personal", "prepositions", "repeat", "sheep", "sleep", "zoo"}
 	ds := NewWordListDS(words)
 
 	pre, app := ds.GetGroups("")
 
-	expectedPre := []string{"a", "e", "g", "h", "i", "l", "n", "o", "p", "r", "s", "t", "u", "v", "z"}
-	expectedApp := []string{"a", "e", "g", "h", "i", "l", "n", "o", "p", "r", "s", "t", "u", "v"}
+	expectedPre := []string{"a", "e", "f", "g", "h", "i", "l", "n", "o", "p", "r", "s", "t", "u", "v", "z"}
+	expectedApp := []string{"a", "e", "g", "h", "i", "l", "n", "o", "p", "r", "s", "t", "u", "v", "x"}
 
-	if !reflect.DeepEqual(pre, expectedPre) {
+	if !equalStringSlices(pre, expectedPre) {
 		t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
 	}
-	if !reflect.DeepEqual(app, expectedApp) {
+	if !equalStringSlices(app, expectedApp) {
 		t.Errorf("Expected append %v, got %v", expectedApp, app)
 	}
 }
@@ -49,10 +50,10 @@ func TestGetGroups_SingleCharacterQuery(t *testing.T) {
 	expectedPre := []string{"e", "h", "l", "p", "r", "v"}
 	expectedApp := []string{"a", "e", "l", "n", "o", "p", "r"}
 
-	if !reflect.DeepEqual(pre, expectedPre) {
+	if !equalStringSlices(pre, expectedPre) {
 		t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
 	}
-	if !reflect.DeepEqual(app, expectedApp) {
+	if !equalStringSlices(app, expectedApp) {
 		t.Errorf("Expected append %v, got %v", expectedApp, app)
 	}
 }
@@ -66,10 +67,10 @@ func TestGetGroups_MultiCharacterQuery(t *testing.T) {
 	expectedPre := []string{"e", "l", "r"}
 	expectedApp := []string{"e", "h", "o"}
 
-	if !reflect.DeepEqual(pre, expectedPre) {
+	if !equalStringSlices(pre, expectedPre) {
 		t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
 	}
-	if !reflect.DeepEqual(app, expectedApp) {
+	if !equalStringSlices(app, expectedApp) {
 		t.Errorf("Expected append %v, got %v", expectedApp, app)
 	}
 }
@@ -184,6 +185,124 @@ func TestWordListDS_Contains(t *testing.T) {
 		result := singleDS.Contains("other")
 		if result != false {
 			t.Errorf("Contains(%q) on single-word WordListDS = %v; want false", "other", result)
+		}
+	})
+}
+
+func TestGetSuggestionGroups(t *testing.T) {
+	words := []string{"elephant", "envelope", "pen", "penguin", "people", "person", "personal", "prepositions", "repeat", "sheep", "sleep"}
+	ds := NewWordListDS(words)
+
+	// Test case 1: Original test case for "pe"
+	t.Run("Query_pe", func(t *testing.T) {
+		pre, middle, app := ds.GetSuggestionGroups("pe")
+		expectedPre := []string{"envelope"}
+		expectedMiddle := []string{"repeat"}
+		expectedApp := []string{"pen", "penguin", "people", "person", "personal"}
+
+		if !equalStringSlices(pre, expectedPre) {
+			t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
+		}
+		if !equalStringSlices(middle, expectedMiddle) {
+			t.Errorf("Expected middle %v, got %v", expectedMiddle, middle)
+		}
+		if !equalStringSlices(app, expectedApp) {
+			t.Errorf("Expected append %v, got %v", expectedApp, app)
+		}
+	})
+
+	// Test case 2: Empty query
+	t.Run("Empty_query", func(t *testing.T) {
+		pre, middle, app := ds.GetSuggestionGroups("")
+		expectedPre := []string{}
+		expectedMiddle := []string{}
+		expectedApp := []string{}
+
+		if !equalStringSlices(pre, expectedPre) {
+			t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
+		}
+		if !equalStringSlices(middle, expectedMiddle) {
+			t.Errorf("Expected middle %v, got %v", expectedMiddle, middle)
+		}
+		if !equalStringSlices(app, expectedApp) {
+			t.Errorf("Expected append %v, got %v", expectedApp, app)
+		}
+	})
+
+	// Test case 3: Query with no matches
+	t.Run("No_matches", func(t *testing.T) {
+		pre, middle, app := ds.GetSuggestionGroups("xyz")
+		expectedPre := []string{}
+		expectedMiddle := []string{}
+		expectedApp := []string{}
+
+		if !equalStringSlices(pre, expectedPre) {
+			t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
+		}
+		if !equalStringSlices(middle, expectedMiddle) {
+			t.Errorf("Expected middle %v, got %v", expectedMiddle, middle)
+		}
+		if !equalStringSlices(app, expectedApp) {
+			t.Errorf("Expected append %v, got %v", expectedApp, app)
+		}
+	})
+
+	// Test case 4: Query matching a complete word
+	t.Run("Complete_word", func(t *testing.T) {
+		pre, middle, app := ds.GetSuggestionGroups("pen")
+		expectedPre := []string{}
+		expectedMiddle := []string{"pen"}
+		expectedApp := []string{"penguin"}
+
+		if !equalStringSlices(pre, expectedPre) {
+			t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
+		}
+		if !equalStringSlices(middle, expectedMiddle) {
+			t.Errorf("Expected middle %v, got %v", expectedMiddle, middle)
+		}
+		if !equalStringSlices(app, expectedApp) {
+			t.Errorf("Expected append %v, got %v", expectedApp, app)
+		}
+	})
+
+	// Test case 5: Query appearing in multiple positions
+	t.Run("Multiple_positions", func(t *testing.T) {
+		pre, middle, app := ds.GetSuggestionGroups("e")
+		// Sort expected slices to ensure consistent comparison
+		expectedPre := []string{"envelope", "people"}
+		expectedMiddle := []string{"elephant", "envelope", "pen", "penguin", "people", "person", "personal", "prepositions", "repeat", "sheep", "sleep"}
+		expectedApp := []string{"elephant", "envelope"}
+
+		sort.Strings(expectedPre)
+		sort.Strings(expectedMiddle)
+		sort.Strings(expectedApp)
+
+		if !equalStringSlices(pre, expectedPre) {
+			t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
+		}
+		if !equalStringSlices(middle, expectedMiddle) {
+			t.Errorf("Expected middle %v, got %v", expectedMiddle, middle)
+		}
+		if !equalStringSlices(app, expectedApp) {
+			t.Errorf("Expected append %v, got %v", expectedApp, app)
+		}
+	})
+
+	// Test case 6: Query at end of words
+	t.Run("End_of_words", func(t *testing.T) {
+		pre, middle, app := ds.GetSuggestionGroups("eep")
+		expectedPre := []string{"sheep", "sleep"}
+		expectedMiddle := []string{}
+		expectedApp := []string{}
+
+		if !equalStringSlices(pre, expectedPre) {
+			t.Errorf("Expected prepend %v, got %v", expectedPre, pre)
+		}
+		if !equalStringSlices(middle, expectedMiddle) {
+			t.Errorf("Expected middle %v, got %v", expectedMiddle, middle)
+		}
+		if !equalStringSlices(app, expectedApp) {
+			t.Errorf("Expected append %v, got %v", expectedApp, app)
 		}
 	})
 }

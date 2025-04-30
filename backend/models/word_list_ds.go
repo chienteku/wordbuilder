@@ -34,6 +34,7 @@ func NewWordListDS(words []string) *WordListDS {
 
 func getInitialGroups(data []byte) (prependLetters []string, appendLetters []string) {
 	wordsBytes := bytes.Split(data, []byte{'$'})
+
 	prependSet := make(map[byte]bool)
 	appendSet := make(map[byte]bool)
 	for _, wordByte := range wordsBytes {
@@ -119,4 +120,94 @@ func (ds *WordListDS) Contains(word string) bool {
 		}
 	}
 	return false
+}
+
+// GetSuggestionGroups returns the prepend/middle/append suggestion groups for a given query string S.
+func (ds *WordListDS) GetSuggestionGroups(S string) (prependSuggestions []string, middleSuggestions []string, appendSuggestions []string) {
+	if len(S) == 0 {
+		// Handle empty query
+		return []string{}, []string{}, []string{}
+	}
+
+	// Get all positions where S appears
+	positions := ds.index.Lookup([]byte(S), -1)
+
+	// Sets to avoid duplicates
+	preSet := make(map[string]bool)
+	midSet := make(map[string]bool)
+	appSet := make(map[string]bool)
+
+	for _, pos := range positions {
+		// Find which word this position belongs to
+		word, start, end := findWord(ds.data, pos)
+
+		// Skip if not a valid word
+		if word == "" {
+			continue
+		}
+
+		// Calculate relative position of S within the word
+		relPos := pos - start
+
+		// Check if S exactly matches the word
+		if word == S {
+			midSet[word] = true
+			continue
+		}
+
+		// Append suggestions: S is at the start of the word
+		if relPos == 0 {
+			appSet[word] = true
+		}
+
+		// Middle suggestions: S is in the middle (not at start or end)
+		if relPos > 0 && pos+len(S) < end {
+			midSet[word] = true
+		}
+
+		// Prepend suggestions: S is at the end of a prefix
+		if pos+len(S) == end {
+			preSet[word] = true
+		}
+	}
+
+	// Convert sets to sorted slices
+	var pre, mid, app []string
+	for w := range preSet {
+		pre = append(pre, w)
+	}
+	for w := range midSet {
+		mid = append(mid, w)
+	}
+	for w := range appSet {
+		app = append(app, w)
+	}
+
+	sort.Strings(pre)
+	sort.Strings(mid)
+	sort.Strings(app)
+
+	return pre, mid, app
+}
+
+// findWord finds the word containing the given position and returns the word
+// along with its start and end positions in the data
+func findWord(data []byte, pos int) (string, int, int) {
+	// Find start of word
+	start := pos
+	for start > 0 && data[start-1] != '$' {
+		start--
+	}
+
+	// Find end of word
+	end := pos
+	for end < len(data) && data[end] != '$' {
+		end++
+	}
+
+	// Extract word
+	if start < len(data) && end <= len(data) {
+		return string(data[start:end]), start, end
+	}
+	return "", 0, 0
 }
